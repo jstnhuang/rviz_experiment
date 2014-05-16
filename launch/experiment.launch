@@ -1,0 +1,15 @@
+<launch>
+  <node pkg="rviz_experiment" name="eyetracker_node" type="eyetracker.py"
+    output="screen" cwd="node" />
+
+  <arg name="user" />
+  <arg name="condition" />
+  <node pkg="rosbag" type="record" name="rosbag_record_exp"
+    args="record -O /home/jstn/Dropbox/experiment_data/$(arg user)_$(arg
+    condition).bag pr2_marker_control_transparent/feedback rviz_camera_publisher/camera_pose l_cart/command_pose r_cart/command_pose head_traj_controller/point_head_action/goal l_gripper_controller/command r_gripper_controller/command user_gaze_position" />
+
+  <include file="$(find
+  pr2_interactive_manipulation_frontend)/launch/pr2_interactive_manipulation_desktop.launch">
+    <arg name="rviz_config_file_base" value="$(find rviz_experiment)/config/experiment.rviz" />
+  </include>
+</launch>
