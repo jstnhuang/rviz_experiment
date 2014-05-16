@@ -25,7 +25,7 @@ LEFT_POSITION_TOPIC = 'l_cart/command_pose'
 RIGHT_GRASP_TOPIC = 'r_gripper_controller/command'
 RIGHT_POSITION_TOPIC = 'r_cart/command_pose'
 MARKER_FEEDBACK_TOPIC = 'pr2_marker_control_transparent/feedback'
-GAZE_TOPIC = '/user_gaze_position'
+GAZE_TOPIC = 'user_gaze_position'
 
 Point = namedtuple('Point', ['x', 'y', 'z'])
 Quaternion = namedtuple('Quaternion', ['w', 'x', 'y', 'z'])
