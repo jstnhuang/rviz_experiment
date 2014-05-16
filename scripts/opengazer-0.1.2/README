@@ -1,3 +1,9 @@
+This copy of Opengazer incorporates the fixes described by steeldriver in [CMake errors... I'm lost](http://ubuntuforums.org/archive/index.php/t-2059331.html). You still need to install the requirements. Note that contrary to the directions below, you do not need to install vxl from source. Just apt-get install libvxl1-dev.
+
+I also modified this copy to publish to standard error instead of standard output, so that the output isn't buffered. The ROS node that wraps around this is eyetracker.py. This is in this folder because this directory has to be the working directory when ./opengazer is run. I think it's because it reads calpoints.txt to do the calibration. Luckily, roslaunch allows us to set <node cwd="node" ...>.
+
+ORIGINAL README:
+
 Download:
 
 1. Tarball from 
