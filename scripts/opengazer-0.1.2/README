@@ -1,3 +1,47 @@
+This copy of Opengazer incorporates the fixes described by steeldriver in
+http://ubuntuforums.org/archive/index.php/t-2059331.html. You still need to
+install the requirements. Note that contrary to the directions below, you
+do not need to install vxl from source. Just apt-get install libvxl1-dev.
+
+steeldriver's post was:
+  If I were you I would
+
+  1. install libvxl1-dev from the repo
+  2. attempt to build opengazer
+
+  There appear to be a couple of opengazer build issues; i.e.
+
+  [COMPILE ERROR] conflicting definition of 'exception' in PointTracker.h - you
+  can fix that by editing the file and adding the namespace std:: explicitly
+  [LINK ERRORS - MULTIPLE] the Makefile places the libraries BEFORE the
+  prerequisites - you can fix that by moving '$^'
+
+  $ diff PointTracker.h.bak PointTracker.h
+  11c11
+  < class TrackingException: public exception {};
+  ---
+  > class TrackingException: public std::exception {};
+
+  $ diff Makefile.bak Makefile
+  3c3
+  < VXLDIR = /opt
+  ---
+  > VXLDIR = /usr
+  27c27
+  < g++ $(CPPFLAGS) -o $@ `pkg-config cairomm-1.0 opencv gtkmm-2.4 --libs` $(LINKER) $^
+  ---
+  > g++ $(CPPFLAGS) -o $@ $^ `pkg-config cairomm-1.0 opencv gtkmm-2.4 --libs` $(LINKER)
+  40c40
+
+I also modified this copy to publish to standard error instead of standard
+output, so that the output isn't buffered. The ROS node that wraps around
+this is eyetracker.py. This is in this folder because this directory has to
+be the working directory when ./opengazer is run. I think it's because it
+reads calpoints.txt to do the calibration. Luckily, roslaunch allows us to
+set <node cwd="node" ...>.
+
+ORIGINAL README:
+
 Download:
 
 1. Tarball from 
