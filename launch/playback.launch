@@ -1,17 +1,17 @@
 <launch>
   <arg name="user" />
   <arg name="condition" />
-  <arg name="sim" default="false" />
 
-  <node pkg="rosbag" type="play" name="rosbag_playback_exp"
-    args="/home/jstn/Dropbox/experiment_data/$(arg user)_$(arg condition).bag" />
+  <group>
+    <remap from="head_mount_kinect/rgb/image_raw"
+      to="/playback/head_mount_kinect/rgb/image_raw" />
+    <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
+    <node pkg="rosbag" type="play" name="rosbag_playback_exp"
+      args="$(arg data_dir)/$(arg user)_$(arg condition).bag" />
+  </group>
 
-  <arg if="$(arg sim)" name="rviz_config"
-    value="$(find rviz_experiment)/config/playback-sim.rviz" />
-  <arg unless="$(arg sim)" name="rviz_config"
-    value="$(find rviz_experiment)/config/playback.rviz" />
   <include file="$(find
     pr2_interactive_manipulation_frontend)/launch/pr2_interactive_manipulation_desktop.launch">
-    <arg name="rviz_config_file_base" value="$(arg rviz_config)" />
+    <arg name="rviz_config_file_base" value="$(find rviz_experiment)/config/playback.rviz" />
   </include>
 </launch>
