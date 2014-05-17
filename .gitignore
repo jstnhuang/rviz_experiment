@@ -1,3 +1,10 @@
 *.o
 *.depends
 .hidden
+
+CMakeFiles/
+CTestTestfile.cmake
+Makefile
+catkin_generated/
+cmake/
+cmake_install.cmake
