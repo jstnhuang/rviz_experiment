@@ -2,8 +2,7 @@
   <arg name="user" />
   <arg name="condition" />
 
-  <node pkg="rviz_experiment" name="eyetracker_node" type="eyetracker.py"
-    output="screen" cwd="node" />
+  <node pkg="usb_cam" type="usb_cam_node" name="webcam_node" />
 
   <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
   <node pkg="rosbag" type="record" name="rosbag_record_exp"
@@ -17,7 +16,8 @@
       l_gripper_controller/command
       r_gripper_controller/command
       user_gaze_position
-      head_mount_kinect/rgb/image_raw" />
+      webcam_node/image_raw/compressed
+      head_mount_kinect/rgb/image_color/compressed" />
 
   <include file="$(find
     pr2_interactive_manipulation_frontend)/launch/pr2_interactive_manipulation_desktop.launch">

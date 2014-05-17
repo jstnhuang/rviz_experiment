@@ -3,8 +3,8 @@
   <arg name="condition" />
 
   <group>
-    <remap from="head_mount_kinect/rgb/image_raw"
-      to="/playback/head_mount_kinect/rgb/image_raw" />
+    <remap from="head_mount_kinect/rgb/image_color/compressed"
+      to="/playback/head_mount_kinect/rgb/image_color/compressed" />
     <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
     <node pkg="rosbag" type="play" name="rosbag_playback_exp"
       args="$(arg data_dir)/$(arg user)_$(arg condition).bag" />
