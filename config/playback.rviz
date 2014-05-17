@@ -1274,7 +1274,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /webcam_node/image_raw
+      Image Topic: /playback/head_mount_kinect/rgb/image_color
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -1285,7 +1285,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /playback/head_mount_kinect/rgb/image_color
+      Image Topic: /webcam_node/image_raw
       Max Value: 1
       Median window: 5
       Min Value: 0
