@@ -11,7 +11,6 @@ import rosbag
 import sys
 
 NSECS_PER_SEC = 1000000000
-SCREEN_WIDTH = 1920
 
 GRIPPER_COMMAND_TYPE = 'pr2_controllers_msgs/Pr2GripperCommand'
 MARKER_FEEDBACK_TYPE = 'visualization_msgs/InteractiveMarkerFeedback'
@@ -25,7 +24,6 @@ LEFT_POSITION_TOPIC = 'l_cart/command_pose'
 RIGHT_GRASP_TOPIC = 'r_gripper_controller/command'
 RIGHT_POSITION_TOPIC = 'r_cart/command_pose'
 MARKER_FEEDBACK_TOPIC = 'pr2_marker_control_transparent/feedback'
-GAZE_TOPIC = 'user_gaze_position'
 
 Point = namedtuple('Point', ['x', 'y', 'z'])
 Quaternion = namedtuple('Quaternion', ['w', 'x', 'y', 'z'])
@@ -70,7 +68,7 @@ def model_factory(message):
   elif message._type == SCREEN_POSITION_TYPE:
     return ScreenPosition(message.x, message.y)
   else:
-    raise Exception('Unknown message type in model factory.')
+    return None
 
 class TimeTakenProcessor:
   def __init__(self):
@@ -169,30 +167,6 @@ class GraspCountProcessor:
   def num_grasps(self):
     return self.left_grasps + self.right_grasps
 
-class GazeProcessor:
-  def __init__(self):
-    self._left_time = genpy.Duration(0)
-    self._right_time = genpy.Duration(0)
-    self._previous_gaze_time = None
-
-  def update(self, topic, message, time):
-    if topic != GAZE_TOPIC:
-      return
-    if self._previous_gaze_time is not None:
-      duration = time - self._previous_gaze_time
-      if message.x < SCREEN_WIDTH / 2:
-        self._left_time += duration
-      else:
-        self._right_time += duration
-
-    self._previous_gaze_time = time
-
-  def left_time(self):
-    return self._left_time
-
-  def right_time(self):
-    return self._right_time
-
 def format_duration(duration, precision=2):
   """Returns the number of seconds in this duration as a string."""
   residual = round(duration.nsecs / NSECS_PER_SEC, precision)
@@ -213,15 +187,15 @@ def process(bag):
   camera_movement_time_processor = CameraMovementTimeProcessor()
   marker_movement_time_processor = MarkerMovementTimeProcessor()
   grasp_count_processor = GraspCountProcessor()
-  gaze_processor = GazeProcessor()
   message_logs = {}
   for topic, message, time in bag.read_messages():
     model = model_factory(message)
+    if model is None:
+      continue
     time_taken_processor.update(topic, model, time)
     camera_movement_time_processor.update(topic, model, time)
     marker_movement_time_processor.update(topic, model, time)
     grasp_count_processor.update(topic, model, time)
-    gaze_processor.update(topic, model, time)
     if topic in message_logs:
       message_logs[topic].append((model, time))
     else:
@@ -231,8 +205,6 @@ def process(bag):
   camera_movement_time = camera_movement_time_processor.movement_time()
   marker_time = marker_movement_time_processor.movement_time()
   num_grasps = grasp_count_processor.num_grasps()
-  gaze_left_time = gaze_processor.left_time()
-  gaze_right_time = gaze_processor.right_time()
   print('Time taken: {} seconds'.format(format_duration(time_taken)))
   print('Time spent moving the camera: {} seconds'.format(
     format_duration(camera_movement_time)))
@@ -241,9 +213,6 @@ def process(bag):
   print('Time spent staring: {} seconds'.format(
     format_duration(time_taken - camera_movement_time - marker_time)))
   print('Number of gripper grasps: {}'.format(num_grasps))
-  print('Gaze left: {} seconds, right: {} seconds'.format(
-    format_duration(gaze_left_time), format_duration(gaze_right_time)
-  ))
 
 def main():
   filename = sys.argv[1]
