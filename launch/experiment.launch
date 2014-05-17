@@ -15,7 +15,6 @@
       head_traj_controller/point_head_action/goal
       l_gripper_controller/command
       r_gripper_controller/command
-      user_gaze_position
       webcam_node/image_raw/compressed
       head_mount_kinect/rgb/image_color/compressed" />
 
