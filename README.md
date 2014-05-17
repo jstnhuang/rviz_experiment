@@ -13,7 +13,6 @@ Run interactive manipulation on the robot: `roslaunch pr2_interactive_manipulati
 1. On your computer, set ROS_MASTER_URI appropriately.
 2. Run `scripts/reset_robot.sh`.
 3. Run `scripts/experiment.sh 123 acclimation`, where 123 is the participant ID, and acclimation is the condition (either demonstration, acclimation, or experiment).
-4. Start publishing the rviz camera position by clicking the "Publish camera pose" button.
 
 Experiment data will be saved to /home/jstn/Dropbox/experiment_data/123_acclimation.bag. Obviously, you should change the directory for your machine, in the experiment.sh, experiment.launch, and playback.launch files.
 
