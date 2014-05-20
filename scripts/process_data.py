@@ -153,16 +153,26 @@ class MarkerMovementTimeProcessor:
 
 class GraspCountProcessor:
   def __init__(self):
+    self._is_left_closed = True
+    self._is_right_closed = True
     self.left_grasps = 0
     self.right_grasps = 0
 
   def update(self, topic, message, time):
     if topic == LEFT_GRASP_TOPIC:
       if message.position == 0:
-        self.left_grasps += 1
+        if not self._is_left_closed:
+          self.left_grasps += 1
+        self._is_left_closed = True
+      else:
+        self._is_left_closed = False
     elif topic == RIGHT_GRASP_TOPIC:
       if message.position == 0:
-        self.right_grasps += 1
+        if not self._is_right_closed:
+          self.right_grasps += 1
+        self._is_right_closed = True
+      else:
+        self._is_right_closed = False
 
   def num_grasps(self):
     return self.left_grasps + self.right_grasps
