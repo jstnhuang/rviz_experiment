@@ -7,7 +7,7 @@
   <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
   <node pkg="rosbag" type="record" name="rosbag_record_exp"
     args="
-      record -O $(arg data_dir)/$(arg user)_$(arg condition).bag
+      record -j -O $(arg data_dir)/$(arg user)_$(arg condition).bag
       pr2_marker_control_transparent/feedback
       rviz_camera_publisher/camera_pose
       l_cart/command_pose
