@@ -1,0 +1,10 @@
+<launch>
+  <arg name="user" />
+  <arg name="condition" />
+
+  <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
+  <node pkg="image_view" type="image_view" name="webcam_viewer"
+    args="image:=/webcam_node/image_raw compressed" />
+  <node pkg="rosbag" type="play" name="rosbag_playback_exp"
+    args="$(arg data_dir)/$(arg user)_$(arg condition).bag" />
+</launch>
