@@ -291,6 +291,7 @@ class CodeProcessor:
   def __init__(self):
     self._left_time = genpy.Duration(0)
     self._right_time = genpy.Duration(0)
+    self._other_time = genpy.Duration(0)
     self._squared_left = genpy.Duration(0)
     self._squared_right = genpy.Duration(0)
     self._num_left_looks = 0
@@ -312,10 +313,13 @@ class CodeProcessor:
         self._right_time += delta
         self._squared_right += genpy.Duration(delta.to_sec() * delta.to_sec())
         self._num_right_looks += 1
+      else:
+        self._other_time += delta
       height = round(delta.to_sec(), 1) * 10
       box_text = (
         '' if height < 20
-        else format_duration(self._left_time + self._right_time)
+        else format_duration(
+          self._left_time + self._right_time + self._other_time)
       )
       self._graph_html += (
         '<div class="graphbox {}" style="height: {}px;">'
