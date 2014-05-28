@@ -7,11 +7,11 @@ FEATURES = [
   ('grasp_count', 'Number of gripper grasps'),
   ('left_time', 'Time spent looking left'),
   ('right_time', 'Time spent looking right'),
-  ('num_left_looks', 'Number of left looks'),
-  ('num_right_looks', 'Number of right looks'),
   ('mean_left', 'Mean time looking left'),
-  ('left_stddev', 'Standard deviation looking left'),
   ('mean_right', 'Mean time looking right'),
-  ('right_stddev', 'Standard deviation looking right')
+  ('left_stddev', 'Standard deviation looking left'),
+  ('right_stddev', 'Standard deviation looking right'),
+  ('num_left_looks', 'Number of left looks'),
+  ('num_right_looks', 'Number of right looks')
 ]
 

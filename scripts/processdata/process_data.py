@@ -108,12 +108,12 @@ def process_code(path):
   return (
     utils.format_duration(code_processor.left_time()),
     utils.format_duration(code_processor.right_time()),
-    code_processor.num_left_looks(),
-    code_processor.num_right_looks(),
     utils.format_duration(code_processor.mean_left()),
-    utils.format_duration(code_processor.left_stddev()),
     utils.format_duration(code_processor.mean_right()),
-    utils.format_duration(code_processor.right_stddev())
+    utils.format_duration(code_processor.left_stddev()),
+    utils.format_duration(code_processor.right_stddev()),
+    code_processor.num_left_looks(),
+    code_processor.num_right_looks()
   )
 
 def process(data_dir, user_data):
