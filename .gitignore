@@ -8,3 +8,5 @@ Makefile
 catkin_generated/
 cmake/
 cmake_install.cmake
+
+*.pyc
