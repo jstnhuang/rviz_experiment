@@ -7,7 +7,6 @@ import features
 import message_factory
 import processors
 import topics
-import utils
 import views
 
 from collections import namedtuple
@@ -85,10 +84,10 @@ def process_experiment(path):
   marker_time = marker_movement_time_processor.movement_time()
   num_grasps = grasp_count_processor.num_grasps()
   return (
-    utils.format_duration(time_taken),
-    utils.format_duration(camera_movement_time),
-    utils.format_duration(marker_time),
-    utils.format_duration(time_taken - camera_movement_time - marker_time),
+    time_taken,
+    camera_movement_time,
+    marker_time,
+    time_taken - camera_movement_time - marker_time,
     num_grasps
   )
 
@@ -106,12 +105,12 @@ def process_code(path):
     code_processor.update(topic, model, time) 
   bag.close()
   return (
-    utils.format_duration(code_processor.left_time()),
-    utils.format_duration(code_processor.right_time()),
-    utils.format_duration(code_processor.mean_left()),
-    utils.format_duration(code_processor.mean_right()),
-    utils.format_duration(code_processor.left_stddev()),
-    utils.format_duration(code_processor.right_stddev()),
+    code_processor.left_time(),
+    code_processor.right_time(),
+    code_processor.mean_left(),
+    code_processor.mean_right(),
+    code_processor.left_stddev(),
+    code_processor.right_stddev(),
     code_processor.num_left_looks(),
     code_processor.num_right_looks()
   )
