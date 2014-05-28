@@ -1,0 +1,7 @@
+CAMERA_POSE = 'rviz_camera_publisher/camera_pose'
+LEFT_GRASP = 'l_gripper_controller/command'
+LEFT_POSITION = 'l_cart/command_pose'
+RIGHT_GRASP = 'r_gripper_controller/command'
+RIGHT_POSITION = 'r_cart/command_pose'
+MARKER_FEEDBACK = 'pr2_marker_control_transparent/feedback'
+CODING = 'webcam_coding'
