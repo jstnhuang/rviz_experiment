@@ -36,14 +36,17 @@ TABLE_HEADER = '<tr>{cols}</tr>'.format(
   ])
 )
 
+PROFILE_HEADER = '''
+<tr><th>User ID</th><th>Left/right profile. Left=red, Right=blue
+'''
+
 TABLE_HTML = '''
 <table class="table">
   {header}
-  {{rows}}
-</table>'''.format(header=TABLE_HEADER)
+  {rows}
+</table>'''
 
-def generate(all_data):
-  title = 'Robot teleoperation interface data'
+def generate_data_table(all_data):
   rows = []
   for data in all_data:
     left_right_time = data.left_time + data.right_time
@@ -127,7 +130,12 @@ def generate(all_data):
     ])
     row = '<tr>{values}</tr>'.format(values=values)
     rows.append(row)
-  table = TABLE_HTML.format(rows=''.join(rows))
-  data_area = DATA_AREA.format(title=title, table=table)
+  table = TABLE_HTML.format(header=TABLE_HEADER, rows=''.join(rows))
+  return table
+
+def generate(all_data):
+  title = 'Robot teleoperation interface data'
+  data_table = generate_data_table(all_data)
+  data_area = DATA_AREA.format(title=title, table=data_table)
   html = BASE_HTML.format(title=title, body=data_area)
   return html
