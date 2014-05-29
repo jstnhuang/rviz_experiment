@@ -112,58 +112,6 @@ class GraspCount:
     return self.left_grasps + self.right_grasps
 
 class Code:
-  BASE_HTML = '''
-    <!doctype html>
-    <html>
-      <head>
-        <title>{title}</title>
-        <style>
-          body {{
-            font-family: Sans-serif;
-          }}
-          .graphbox {{
-            align-items: flex-end;
-            color: white;
-            display: flex;
-            justify-content: center;
-            width: 200px;
-          }}
-          .left {{
-            background-color: #1049A9;
-          }}
-          .other {{
-            background-color: #707070;
-          }}
-          .right {{
-            background-color: #680BAB;
-          }}
-        </style>
-      </head>
-      <body>
-        <h1>{title}</h1>
-        {stats_table}
-        <h2>Visualization</h2>
-        {graph}
-      </body>
-    </html>
-  '''
-
-  STATS_TABLE = '''
-    <table class="stats">
-      <tr><td>Time spent looking left</td><td>{left_time}</td></tr>
-      <tr><td>Time spent looking right</td><td>{right_time}</td></tr>
-      <tr><td># of left looks</td><td>{left_looks}</td></tr>
-      <tr><td># of right looks</td><td>{right_looks}</td></tr>
-      <tr>
-        <td>Mean time looking left (stddev)</td>
-        <td>{mean_left} ({left_stddev})</td>
-      </tr>
-      <tr>
-        <td>Mean time looking right (stddev)</td>
-        <td>{mean_right} ({right_stddev})</td>
-      </tr>
-    </table> 
-  '''
   def __init__(self):
     self._left_time = genpy.Duration(0)
     self._right_time = genpy.Duration(0)
@@ -174,13 +122,14 @@ class Code:
     self._num_right_looks = 0
     self._state = 'other'
     self._prev_time = None
-    self._graph_html = '<p>Left = blue, right = purple, other=gray.</p><br />'
+    self._timeline = []
 
   def update(self, topic, message, time):
     if topic != topics.CODING:
       return
     if self._prev_time is not None and message.data != self._state:
       delta = time - self._prev_time
+      self._timeline.append((delta, self._state))
       if self._state == 'left':
         self._left_time += delta
         self._squared_left += genpy.Duration(delta.to_sec() * delta.to_sec())
@@ -191,46 +140,8 @@ class Code:
         self._num_right_looks += 1
       else:
         self._other_time += delta
-      height = round(delta.to_sec(), 1) * 10
-      box_text = (
-        '' if height < 20
-        else self._left_time + self._right_time + self._other_time
-      )
-      self._graph_html += (
-        '<div class="graphbox {}" style="height: {}px;">'
-        '{}</div>'.format(
-          self._state,
-          height,
-          box_text
-        )
-      )
     self._state = message.data
     self._prev_time = time
-
-  #def _generate_stats_table_html(self):
-  #  mean_left = self._left_time / self._num_left_looks
-  #  squared_mean_left = genpy.Duration(mean_left.to_sec() * mean_left.to_sec())
-  #  left_stddev = self._squared_left / self._num_left_looks - squared_mean_left
-  #  mean_right = self._right_time / self._num_right_looks
-  #  squared_mean_right = genpy.Duration(
-  #    mean_right.to_sec() * mean_right.to_sec()
-  #  )
-  #  right_stddev = (
-  #    self._squared_right / self._num_right_looks - squared_mean_right
-  #  )
-  #  return self.STATS_TABLE.format(
-  #    left_time=format_duration(self._left_time),
-  #    right_time=format_duration(self._right_time),
-  #    left_looks=self._num_left_looks,
-  #    right_looks=self._num_right_looks,
-  #    mean_left=format_duration(self._left_time / self._num_left_looks),
-  #    left_stddev=format_duration(left_stddev),
-  #    mean_right=format_duration(self._right_time / self._num_right_looks),
-  #    right_stddev=format_duration(right_stddev)
-  #  )
-
-  #def _generate_graph_html(self):
-  #  return self._graph_html
 
   def left_time(self):
     return self._left_time
@@ -268,15 +179,5 @@ class Code:
     )
     return right_stddev
 
-  #def generate_visualization(self, filename):
-  #  name_parts = filename.split('_')
-  #  title = 'Visualization for {}'.format(filename)
-  #  with open(filename, 'w') as output_file:
-  #    stats_table_html = self._generate_stats_table_html()
-  #    graph_html = self._generate_graph_html()
-  #    html = self.BASE_HTML.format(
-  #      title=title,
-  #      stats_table=stats_table_html,
-  #      graph=graph_html
-  #    )
-  #    print(html, file=output_file)
+  def timeline(self):
+    return self._timeline

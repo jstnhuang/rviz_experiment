@@ -18,7 +18,8 @@ BASE_HTML = '''
     </head>
     <body>
       <div class="container">
-        {body}
+        {data_area}
+        {timeline_area}
       </div>
     </body>
   </html>
@@ -36,8 +37,10 @@ TABLE_HEADER = '<tr>{cols}</tr>'.format(
   ])
 )
 
-PROFILE_HEADER = '''
-<tr><th>User ID</th><th>Left/right profile. Left=red, Right=blue
+TIMELINE_HEADER = '''
+<tr>
+  <th>User ID</th><th>Webcam timeline. Left=green, Right=blue, Other=yellow</th>
+</tr>
 '''
 
 TABLE_HTML = '''
@@ -48,7 +51,7 @@ TABLE_HTML = '''
 
 def generate_data_table(all_data):
   rows = []
-  for data in all_data:
+  for data, timeline in all_data:
     left_right_time = data.left_time + data.right_time
     mean_total = data.mean_left + data.mean_right
     stddev_total = data.left_stddev + data.right_stddev
@@ -133,9 +136,46 @@ def generate_data_table(all_data):
   table = TABLE_HTML.format(header=TABLE_HEADER, rows=''.join(rows))
   return table
 
+def generate_timeline_table(all_data):
+  rows = []
+  for data, timeline in all_data:
+    timeline_events = []
+    total_time = sum([delta.to_sec() for delta, state in timeline])
+    for delta, state in timeline:
+      color = None
+      if state == 'left':
+        color = 'success'
+      elif state == 'right':
+        color = 'info'
+      else:
+        color = 'warning'
+      percentage = 100 * delta.to_sec() / total_time
+      timeline_event = '''
+        <div class="progress-bar progress-bar-{}" style="width: {}%">
+        </div>
+      '''.format(color, percentage)
+      timeline_events.append(timeline_event)
+    timeline_html = '''
+    <div class="progress">
+      {events}
+    </div>
+    '''.format(events=''.join(timeline_events))
+    row = '<tr><td>{user_id}</td><td>{timeline_html}</td></tr>'.format(
+      user_id=data.user_id,
+      timeline_html=timeline_html
+    )
+    rows.append(row)
+  table = TABLE_HTML.format(header=TIMELINE_HEADER, rows=''.join(rows))
+  return table
+
 def generate(all_data):
   title = 'Robot teleoperation interface data'
   data_table = generate_data_table(all_data)
   data_area = DATA_AREA.format(title=title, table=data_table)
-  html = BASE_HTML.format(title=title, body=data_area)
+  timeline_table = generate_timeline_table(all_data)
+  html = BASE_HTML.format(
+    title=title,
+    data_area=data_area,
+    timeline_area=timeline_table
+  )
   return html

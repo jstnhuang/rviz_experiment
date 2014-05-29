@@ -112,7 +112,8 @@ def process_code(path):
     code_processor.left_stddev(),
     code_processor.right_stddev(),
     code_processor.num_left_looks(),
-    code_processor.num_right_looks()
+    code_processor.num_right_looks(),
+    code_processor.timeline()
   )
 
 def process(data_dir, user_data):
@@ -127,10 +128,12 @@ def process(data_dir, user_data):
     '/'.join([data_dir, user.webcam_file]) for user in user_data
   ]
   webcam_features = pool.map(process_code, webcam_paths)
+  webcam_data = [features[:-1] for features in webcam_features]
+  timelines = [features[-1] for features in webcam_features]
 
   all_data = sorted([
-    ExperimentData(*(a + b + c))
-    for a, b, c in zip(user_ids, experiment_features, webcam_features)
+    (ExperimentData(*(a + b + c)), d)
+    for a, b, c, d in zip(user_ids, experiment_features, webcam_data, timelines)
   ])
 
   html = views.generate(all_data)
