@@ -3,37 +3,60 @@ from __future__ import division
 import features
 import utils
 
-BASE_HTML = '''
-  <!doctype html>
-  <html>
-    <head>
-      <title>{title}</title>
-      <link rel="stylesheet"
-      href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-      <link rel="stylesheet"
-      href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
-      <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-      <script
-      src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-      <style>
-        .progress-bar {{
-          color: black;
-        }}
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>Robot teleoperation interface data</h1>
-        {data_area}
-        {personal_area}
-        {trouble_area}
-        {pcl_area}
-        {cam_area}
-        {timeline_area}
-      </div>
-    </body>
-  </html>
-'''
+class Page:
+  BASE_HTML = '''
+    <!doctype html>
+    <html>
+      <head>
+        <title>{title}</title>
+        <link rel="stylesheet"
+        href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+        <link rel="stylesheet"
+        href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <script
+        src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <style>
+          .progress-bar {{
+            color: black;
+          }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>{title}</h1>
+          {data_area}
+          {personal_area}
+          {trouble_area}
+          {pcl_area}
+          {cam_area}
+          {timeline_area}
+        </div>
+      </body>
+    </html>
+  '''
+  def __init__(
+    self, title, data_area, personal_area, trouble_area, pcl_area, cam_area,
+    timeline_area
+  ):
+    self._title = title
+    self._data_area = data_area
+    self._personal_area = personal_area
+    self._trouble_area = trouble_area
+    self._pcl_area = pcl_area
+    self._cam_area = cam_area
+    self._timeline_area = timeline_area
+
+  def generate(self):
+    return Page.BASE_HTML.format(
+      title=self._title,
+      data_area=self._data_area,
+      personal_area=self._personal_area,
+      trouble_area=self._trouble_area,
+      pcl_area=self._pcl_area,
+      cam_area=self._cam_area,
+      timeline_area=self._timeline_area
+    )
 
 AREA = '''
 <h2>{title}</h2>
@@ -250,13 +273,8 @@ def generate(all_data):
   pcl_area = AREA.format(title='Point cloud view', table=pcl_table)
   cam_table = generate_survey_table(all_data, CAM_FEATURES)
   cam_area = AREA.format(title='Camera view', table=cam_table)
-  html = BASE_HTML.format(
-    title=title,
-    data_area=data_area,
-    personal_area=personal_area,
-    trouble_area=trouble_area,
-    pcl_area=pcl_area,
-    cam_area=cam_area,
-    timeline_area=timeline_area
+  page = Page(
+    title, data_area, personal_area, trouble_area, pcl_area, cam_area,
+    timeline_area
   )
-  return html
+  return page.generate()
