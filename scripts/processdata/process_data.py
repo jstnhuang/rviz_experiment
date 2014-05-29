@@ -123,7 +123,7 @@ def process(data_dir, user_data, survey_data):
   experiment_paths = [
     '/'.join([data_dir, user.experiment_file]) for user in user_data
   ]
-  pool = multiprocessing.Pool(processes=7)
+  pool = multiprocessing.Pool(processes=12)
   experiment_features = pool.map(process_experiment, experiment_paths)
   webcam_paths = [
     '/'.join([data_dir, user.webcam_file]) for user in user_data
