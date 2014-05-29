@@ -18,6 +18,7 @@ BASE_HTML = '''
     </head>
     <body>
       <div class="container">
+        <h1>Robot teleoperation interface data</h1>
         {data_area}
         {timeline_area}
       </div>
@@ -25,7 +26,7 @@ BASE_HTML = '''
   </html>
 '''
 
-DATA_AREA = '''
+AREA = '''
 <h2>{title}</h2>
 {table}
 '''
@@ -171,11 +172,12 @@ def generate_timeline_table(all_data):
 def generate(all_data):
   title = 'Robot teleoperation interface data'
   data_table = generate_data_table(all_data)
-  data_area = DATA_AREA.format(title=title, table=data_table)
+  data_area = AREA.format(title='Experiment data', table=data_table)
   timeline_table = generate_timeline_table(all_data)
+  timeline_area = AREA.format(title='Webcam timeline', table=timeline_table)
   html = BASE_HTML.format(
     title=title,
     data_area=data_area,
-    timeline_area=timeline_table
+    timeline_area=timeline_area
   )
   return html
