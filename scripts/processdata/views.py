@@ -59,6 +59,8 @@ TABLE_HTML = '''
   {rows}
 </table>'''
 
+PROGRESS_CLASSES = ['success', 'info', 'warning', 'danger']
+
 PERSONAL_FEATURES = [features.SURVEY_FEATURES[x] for x in [
   26, 27, 23, 24, 25, 28, 30, 29
 ]]
@@ -205,24 +207,29 @@ def generate_survey_table(all_data, area_features):
   for data, timeline, survey in all_data:
     survey_dict = survey._asdict()
     values = []
+    class_index = 0 # Cycle through CSS classes for progress bars.
     for name, description, is_likert in area_features:
       value = survey_dict[name]
       if is_likert:
+        color = PROGRESS_CLASSES[class_index]
+        class_index = (class_index + 1) % len(PROGRESS_CLASSES)
         value = '''
           <div class="progress">
-            <div class="progress-bar progress-bar-info" style="width: {}%">
+            <div class="progress-bar progress-bar-{}" style="width: {}%">
               {}
             </div>
           </div>
-        '''.format(100 * survey_dict[name] / 5, survey_dict[name])
+        '''.format(color, 100 * survey_dict[name] / 5, survey_dict[name])
       elif type(value) == type(0): # Number of objects collected/possible.
+        color = PROGRESS_CLASSES[class_index]
+        class_index = (class_index + 1) % len(PROGRESS_CLASSES)
         value = '''
           <div class="progress">
-            <div class="progress-bar progress-bar-success" style="width: {}%">
+            <div class="progress-bar progress-bar-{}" style="width: {}%">
               {}
             </div>
           </div>
-        '''.format(100 * survey_dict[name] / 6, survey_dict[name])
+        '''.format(color, 100 * survey_dict[name] / 6, survey_dict[name])
       values.append('<td>{}</td>'.format(value))
     row = '<tr><td>{}</td>{}</tr>'.format(data.user_id, ''.join(values))
     rows.append(row)
