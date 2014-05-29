@@ -219,7 +219,7 @@ def generate_survey_table(all_data, area_features):
               {}
             </div>
           </div>
-        '''.format(color, 100 * survey_dict[name] / 5, survey_dict[name])
+        '''.format(color, 100 * survey_dict[name] / 4, survey_dict[name])
       elif type(value) == type(0): # Number of objects collected/possible.
         color = PROGRESS_CLASSES[class_index]
         class_index = (class_index + 1) % len(PROGRESS_CLASSES)
