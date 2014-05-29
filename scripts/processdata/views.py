@@ -210,6 +210,14 @@ def generate_survey_table(all_data, area_features):
             </div>
           </div>
         '''.format(100 * survey_dict[name] / 5, survey_dict[name])
+      elif type(value) == type(0): # Number of objects collected/possible.
+        value = '''
+          <div class="progress">
+            <div class="progress-bar progress-bar-success" style="width: {}%">
+              {}
+            </div>
+          </div>
+        '''.format(100 * survey_dict[name] / 6, survey_dict[name])
       values.append('<td>{}</td>'.format(value))
     row = '<tr><td>{}</td>{}</tr>'.format(data.user_id, ''.join(values))
     rows.append(row)
