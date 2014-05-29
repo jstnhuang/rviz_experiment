@@ -50,18 +50,26 @@ class Page:
   def generate(self):
     return Page.BASE_HTML.format(
       title=self._title,
-      data_area=self._data_area,
-      personal_area=self._personal_area,
-      trouble_area=self._trouble_area,
-      pcl_area=self._pcl_area,
-      cam_area=self._cam_area,
-      timeline_area=self._timeline_area
+      data_area=self._data_area.generate(),
+      personal_area=self._personal_area.generate(),
+      trouble_area=self._trouble_area.generate(),
+      pcl_area=self._pcl_area.generate(),
+      cam_area=self._cam_area.generate(),
+      timeline_area=self._timeline_area.generate()
     )
 
-AREA = '''
-<h2>{title}</h2>
-{table}
-'''
+class Area:
+  """A section consists of a section title and a data table."""
+  AREA_HTML = '''
+  <h2>{title}</h2>
+  {table}
+  '''
+  def __init__(self, title, table):
+    self._title = title
+    self._table = table
+
+  def generate(self):
+    return Area.AREA_HTML.format(title=self._title, table=self._table)
 
 TABLE_HEADER = '<tr>{cols}</tr>'.format(
   cols=''.join([
@@ -262,17 +270,17 @@ def generate_survey_table(all_data, area_features):
 def generate(all_data):
   title = 'Robot teleoperation interface data'
   data_table = generate_data_table(all_data)
-  data_area = AREA.format(title='Experiment data', table=data_table)
+  data_area = Area('Experiment data', data_table)
   timeline_table = generate_timeline_table(all_data)
-  timeline_area = AREA.format(title='Webcam timeline', table=timeline_table)
+  timeline_area = Area('Webcam timeline', timeline_table)
   personal_table = generate_survey_table(all_data, PERSONAL_FEATURES)
-  personal_area = AREA.format(title='User info', table=personal_table)
+  personal_area = Area('User info', personal_table)
   trouble_table = generate_survey_table(all_data, TROUBLE_FEATURES)
-  trouble_area = AREA.format(title='Troubles and strategy', table=trouble_table)
+  trouble_area = Area('Troubles and strategy', trouble_table)
   pcl_table = generate_survey_table(all_data, PCL_FEATURES)
-  pcl_area = AREA.format(title='Point cloud view', table=pcl_table)
+  pcl_area = Area('Point cloud view', pcl_table)
   cam_table = generate_survey_table(all_data, CAM_FEATURES)
-  cam_area = AREA.format(title='Camera view', table=cam_table)
+  cam_area = Area('Camera view', cam_table)
   page = Page(
     title, data_area, personal_area, trouble_area, pcl_area, cam_area,
     timeline_area
