@@ -20,6 +20,10 @@ BASE_HTML = '''
       <div class="container">
         <h1>Robot teleoperation interface data</h1>
         {data_area}
+        {personal_area}
+        {trouble_area}
+        {pcl_area}
+        {cam_area}
         {timeline_area}
       </div>
     </body>
@@ -50,9 +54,25 @@ TABLE_HTML = '''
   {rows}
 </table>'''
 
+PERSONAL_FEATURES = [features.SURVEY_FEATURES[x] for x in [
+  26, 27, 23, 24, 25, 28, 30, 29
+]]
+
+TROUBLE_FEATURES = [features.SURVEY_FEATURES[x] for x in [
+  17, 18, 19, 20, 21, 2, 22
+]]
+
+PCL_FEATURES = [features.SURVEY_FEATURES[x] for x in [
+  3, 4, 5, 6, 7, 8, 15
+]]
+
+CAM_FEATURES = [features.SURVEY_FEATURES[x] for x in [
+  9, 10, 11, 12, 13, 14, 16
+]]
+
 def generate_data_table(all_data):
   rows = []
-  for data, timeline in all_data:
+  for data, timeline, survey in all_data:
     left_right_time = data.left_time + data.right_time
     mean_total = data.mean_left + data.mean_right
     stddev_total = data.left_stddev + data.right_stddev
@@ -139,7 +159,7 @@ def generate_data_table(all_data):
 
 def generate_timeline_table(all_data):
   rows = []
-  for data, timeline in all_data:
+  for data, timeline, survey in all_data:
     timeline_events = []
     total_time = sum([delta.to_sec() for delta, state in timeline])
     for delta, state in timeline:
@@ -169,15 +189,54 @@ def generate_timeline_table(all_data):
   table = TABLE_HTML.format(header=TIMELINE_HEADER, rows=''.join(rows))
   return table
 
+def generate_survey_table(all_data, area_features):
+  header = '<tr><th>User ID</th>{cols}</tr>'.format(
+    cols=''.join([
+      '<th>{col}</th>'.format(col=description)
+      for name, description, is_likert in area_features
+    ])
+  )
+  rows = []
+  for data, timeline, survey in all_data:
+    survey_dict = survey._asdict()
+    values = []
+    for name, description, is_likert in area_features:
+      value = survey_dict[name]
+      if is_likert:
+        value = '''
+          <div class="progress">
+            <div class="progress-bar progress-bar-info" style="width: {}%">
+              {}
+            </div>
+          </div>
+        '''.format(100 * survey_dict[name] / 5, survey_dict[name])
+      values.append('<td>{}</td>'.format(value))
+    row = '<tr><td>{}</td>{}</tr>'.format(data.user_id, ''.join(values))
+    rows.append(row)
+  table = TABLE_HTML.format(header=header, rows=''.join(rows))
+  return table
+
 def generate(all_data):
   title = 'Robot teleoperation interface data'
   data_table = generate_data_table(all_data)
   data_area = AREA.format(title='Experiment data', table=data_table)
   timeline_table = generate_timeline_table(all_data)
   timeline_area = AREA.format(title='Webcam timeline', table=timeline_table)
+  personal_table = generate_survey_table(all_data, PERSONAL_FEATURES)
+  personal_area = AREA.format(title='User info', table=personal_table)
+  trouble_table = generate_survey_table(all_data, TROUBLE_FEATURES)
+  trouble_area = AREA.format(title='Troubles and strategy', table=trouble_table)
+  pcl_table = generate_survey_table(all_data, PCL_FEATURES)
+  pcl_area = AREA.format(title='Point cloud view', table=pcl_table)
+  cam_table = generate_survey_table(all_data, CAM_FEATURES)
+  cam_area = AREA.format(title='Camera view', table=cam_table)
   html = BASE_HTML.format(
     title=title,
     data_area=data_area,
+    personal_area=personal_area,
+    trouble_area=trouble_area,
+    pcl_area=pcl_area,
+    cam_area=cam_area,
     timeline_area=timeline_area
   )
   return html

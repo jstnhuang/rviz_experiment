@@ -15,3 +15,38 @@ FEATURES = [
   ('num_right_looks', 'Number of right looks')
 ]
 
+SURVEY_FEATURES = [
+  ('timestamp', 'Timestamp', False),
+  ('user_id', 'User ID', False),
+  ('strategy', 'Strategy for picking up an object', False),
+  ('pcl_could_see', '3D - could see objects', True),
+  ('pcl_could_recognize', '3D - could recognize objects', True),
+  ('pcl_could_reach', '3D - could judge reachability', True),
+  ('pcl_could_judge_dist', '3D - could judge distance', True),
+  ('pcl_used_more', '3D - used more', True),
+  ('pcl_could_go_without', '3D - could go without', True),
+  ('cam_could_see', '2D - could see objects', True),
+  ('cam_could_recognize', '2D - could recognize objects', True),
+  ('cam_could_reach', '2D - could judge reachability', True),
+  ('cam_could_judge_dist', '2D - could judge distance', True),
+  ('cam_used_more', '2D - used more', True),
+  ('cam_could_go_without', '2D - could go without', True),
+  ('pcl_advantages', '3D advantages', False),
+  ('cam_advantages', '2D advantages', False),
+  ('trouble_moving_gripper', 'Hard to move gripper', True),
+  ('trouble_slow_interface', 'Interface was slow', True),
+  ('trouble_arm_blocking', 'Arm blocked view', True),
+  ('trouble_unrecognizable', 'Couldn\'t tell object appearance', True),
+  ('trouble_locating', 'Couldn\'t locate objects', True),
+  ('most_trouble', 'Most difficult part', False),
+  ('prior_gaming', 'Gaming experience', True),
+  ('prior_modeling', 'Modeling experience', True),
+  ('prior_remote_control', 'Teleoperation experience', True),
+  ('num_collected', '# collected objects', False),
+  ('num_possible', '# objects possible to collect', False),
+  ('prior_robotics', 'Robotics experience', True),
+  ('other_comments', 'Other comments', False),
+  ('prior_study', 'Participated in prior study', False),
+  ('email', 'Email', False),
+  ('notes', 'Experimenter notes', False)
+]

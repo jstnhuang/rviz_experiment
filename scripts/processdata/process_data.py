@@ -6,6 +6,7 @@ from __future__ import print_function
 import features
 import message_factory
 import processors
+import survey
 import topics
 import views
 
@@ -116,7 +117,7 @@ def process_code(path):
     code_processor.timeline()
   )
 
-def process(data_dir, user_data):
+def process(data_dir, user_data, survey_data):
   all_data = []
   user_ids = [(user.user_id,) for user in user_data]
   experiment_paths = [
@@ -132,8 +133,10 @@ def process(data_dir, user_data):
   timelines = [features[-1] for features in webcam_features]
 
   all_data = sorted([
-    (ExperimentData(*(a + b + c)), d)
-    for a, b, c, d in zip(user_ids, experiment_features, webcam_data, timelines)
+    (ExperimentData(*(a + b + c)), d, e)
+    for a, b, c, d, e in zip(
+      user_ids, experiment_features, webcam_data, timelines, survey_data
+    )
   ])
 
   html = views.generate(all_data)
@@ -144,7 +147,8 @@ def process(data_dir, user_data):
 def main():
   data_dir = sys.argv[1]
   user_data = collate_files(sorted(os.listdir(data_dir)))
-  process(data_dir, user_data)
+  survey_data = survey.read(os.sep.join([data_dir, 'survey.tsv']))
+  process(data_dir, user_data, survey_data)
 
 if __name__ == '__main__':
   main()
