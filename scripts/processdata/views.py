@@ -25,42 +25,42 @@ class Page:
       <body>
         <div class="container">
           <h1>{title}</h1>
-          {data_area}
-          {personal_area}
-          {trouble_area}
-          {pcl_area}
-          {cam_area}
-          {timeline_area}
+          {data_section}
+          {personal_section}
+          {trouble_section}
+          {pcl_section}
+          {cam_section}
+          {timeline_section}
         </div>
       </body>
     </html>
   '''
   def __init__(
-    self, title, data_area, personal_area, trouble_area, pcl_area, cam_area,
-    timeline_area
+    self, title, data_section, personal_section, trouble_section, pcl_section,
+    cam_section, timeline_section
   ):
     self._title = title
-    self._data_area = data_area
-    self._personal_area = personal_area
-    self._trouble_area = trouble_area
-    self._pcl_area = pcl_area
-    self._cam_area = cam_area
-    self._timeline_area = timeline_area
+    self._data_section = data_section
+    self._personal_section = personal_section
+    self._trouble_section = trouble_section
+    self._pcl_section = pcl_section
+    self._cam_section = cam_section
+    self._timeline_section = timeline_section
 
   def generate(self):
     return Page.BASE_HTML.format(
       title=self._title,
-      data_area=self._data_area.generate(),
-      personal_area=self._personal_area.generate(),
-      trouble_area=self._trouble_area.generate(),
-      pcl_area=self._pcl_area.generate(),
-      cam_area=self._cam_area.generate(),
-      timeline_area=self._timeline_area.generate()
+      data_section=self._data_section.generate(),
+      personal_section=self._personal_section.generate(),
+      trouble_section=self._trouble_section.generate(),
+      pcl_section=self._pcl_section.generate(),
+      cam_section=self._cam_section.generate(),
+      timeline_section=self._timeline_section.generate()
     )
 
-class Area:
+class Section:
   """A section consists of a section title and a data table."""
-  AREA_HTML = '''
+  SECTION_HTML = '''
   <h2>{title}</h2>
   {table}
   '''
@@ -69,7 +69,22 @@ class Area:
     self._table = table
 
   def generate(self):
-    return Area.AREA_HTML.format(title=self._title, table=self._table)
+    return Section.SECTION_HTML.format(title=self._title, table=self._table)
+
+class Table:
+  TABLE_HTML = '''
+    <table class="table">
+      {header}
+      {rows}
+      {average}
+    </table>
+  '''
+
+  def __init__(self):
+    pass
+
+  def generate(self):
+    pass
 
 TABLE_HEADER = '<tr>{cols}</tr>'.format(
   cols=''.join([
@@ -84,11 +99,6 @@ TIMELINE_HEADER = '''
 </tr>
 '''
 
-TABLE_HTML = '''
-<table class="table">
-  {header}
-  {rows}
-</table>'''
 
 PROGRESS_CLASSES = ['success', 'info', 'warning', 'danger']
 
@@ -227,11 +237,11 @@ def generate_timeline_table(all_data):
   table = TABLE_HTML.format(header=TIMELINE_HEADER, rows=''.join(rows))
   return table
 
-def generate_survey_table(all_data, area_features):
+def generate_survey_table(all_data, section_features):
   header = '<tr><th>User ID</th>{cols}</tr>'.format(
     cols=''.join([
       '<th>{col}</th>'.format(col=description)
-      for name, description, is_likert in area_features
+      for name, description, is_likert in section_features
     ])
   )
   rows = []
@@ -239,7 +249,7 @@ def generate_survey_table(all_data, area_features):
     survey_dict = survey._asdict()
     values = []
     class_index = 0 # Cycle through CSS classes for progress bars.
-    for name, description, is_likert in area_features:
+    for name, description, is_likert in section_features:
       value = survey_dict[name]
       if is_likert:
         color = PROGRESS_CLASSES[class_index]
@@ -270,19 +280,19 @@ def generate_survey_table(all_data, area_features):
 def generate(all_data):
   title = 'Robot teleoperation interface data'
   data_table = generate_data_table(all_data)
-  data_area = Area('Experiment data', data_table)
+  data_section = Section('Experiment data', data_table)
   timeline_table = generate_timeline_table(all_data)
-  timeline_area = Area('Webcam timeline', timeline_table)
+  timeline_section = Section('Webcam timeline', timeline_table)
   personal_table = generate_survey_table(all_data, PERSONAL_FEATURES)
-  personal_area = Area('User info', personal_table)
+  personal_section = Section('User info', personal_table)
   trouble_table = generate_survey_table(all_data, TROUBLE_FEATURES)
-  trouble_area = Area('Troubles and strategy', trouble_table)
+  trouble_section = Section('Troubles and strategy', trouble_table)
   pcl_table = generate_survey_table(all_data, PCL_FEATURES)
-  pcl_area = Area('Point cloud view', pcl_table)
+  pcl_section = Section('Point cloud view', pcl_table)
   cam_table = generate_survey_table(all_data, CAM_FEATURES)
-  cam_area = Area('Camera view', cam_table)
+  cam_section = Section('Camera view', cam_table)
   page = Page(
-    title, data_area, personal_area, trouble_area, pcl_area, cam_area,
-    timeline_area
+    title, data_section, personal_section, trouble_section, pcl_section, cam_section,
+    timeline_section
   )
   return page.generate()
