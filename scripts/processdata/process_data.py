@@ -26,9 +26,6 @@ EXPERIMENT_TOPICS = [
 ]
 
 UserData = namedtuple('UserData', ['user_id', 'experiment_file', 'webcam_file'])
-ExperimentData = namedtuple('ExperimentData',
-  [name for name, description in features.FEATURES]
-)
 
 def collate_files(filenames):
   """Collate data files by user ID."""
@@ -84,13 +81,13 @@ def process_experiment(path):
   camera_movement_time = camera_movement_time_processor.movement_time()
   marker_time = marker_movement_time_processor.movement_time()
   num_grasps = grasp_count_processor.num_grasps()
-  return (
-    time_taken,
-    camera_movement_time,
-    marker_time,
-    time_taken - camera_movement_time - marker_time,
-    num_grasps
-  )
+  return {
+    'time_taken': time_taken,
+    'camera_movement_time': camera_movement_time,
+    'marker_movement_time': marker_time,
+    'other_time': time_taken - camera_movement_time - marker_time,
+    'grasp_count': num_grasps
+  }
 
 def process_code(path):
   """Extract features from a webcam coding."""
@@ -105,21 +102,20 @@ def process_code(path):
       continue
     code_processor.update(topic, model, time) 
   bag.close()
-  return (
-    code_processor.left_time(),
-    code_processor.right_time(),
-    code_processor.mean_left(),
-    code_processor.mean_right(),
-    code_processor.left_stddev(),
-    code_processor.right_stddev(),
-    code_processor.num_left_looks(),
-    code_processor.num_right_looks(),
-    code_processor.timeline()
-  )
+  return {
+    'left_time': code_processor.left_time(),
+    'right_time': code_processor.right_time(),
+    'mean_left': code_processor.mean_left(),
+    'mean_right': code_processor.mean_right(),
+    'left_stddev': code_processor.left_stddev(),
+    'right_stddev': code_processor.right_stddev(),
+    'num_left_looks': code_processor.num_left_looks(),
+    'num_right_looks': code_processor.num_right_looks(),
+    'timeline': code_processor.timeline()
+  }
 
 def process(data_dir, user_data, survey_data):
-  all_data = []
-  user_ids = [(user.user_id,) for user in user_data]
+  user_ids = [user.user_id for user in user_data]
   experiment_paths = [
     '/'.join([data_dir, user.experiment_file]) for user in user_data
   ]
@@ -129,15 +125,15 @@ def process(data_dir, user_data, survey_data):
     '/'.join([data_dir, user.webcam_file]) for user in user_data
   ]
   webcam_features = pool.map(process_code, webcam_paths)
-  webcam_data = [features[:-1] for features in webcam_features]
-  timelines = [features[-1] for features in webcam_features]
 
-  all_data = sorted([
-    (ExperimentData(*(a + b + c)), d, e)
-    for a, b, c, d, e in zip(
-      user_ids, experiment_features, webcam_data, timelines, survey_data
-    )
-  ])
+  all_data = []
+  for user_id, exp, cam, survey in zip(
+    user_ids, experiment_features, webcam_features, survey_data):
+    data = {'user_id': user_id}
+    data.update(exp)
+    data.update(cam)
+    data.update(survey)
+    all_data.append(data)
 
   html = views.generate(all_data)
   output_path = '/'.join([data_dir, 'index.html'])
@@ -146,8 +142,11 @@ def process(data_dir, user_data, survey_data):
 
 def main():
   data_dir = sys.argv[1]
-  user_data = collate_files(sorted(os.listdir(data_dir)))
+  user_data = collate_files(os.listdir(data_dir))
+  user_data = sorted(user_data, key=lambda x: x.user_id)
   survey_data = survey.read(os.sep.join([data_dir, 'survey.tsv']))
+  survey_data = sorted(survey_data)
+  survey_data = [data for user_id, data in survey_data]
   process(data_dir, user_data, survey_data)
 
 if __name__ == '__main__':

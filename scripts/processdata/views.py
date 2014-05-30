@@ -1,9 +1,10 @@
 from __future__ import division
 
 import features
+import genpy
 import utils
 
-class Page:
+class Page(object):
   BASE_HTML = '''
     <!doctype html>
     <html>
@@ -58,7 +59,7 @@ class Page:
       timeline_section=self._timeline_section.generate()
     )
 
-class Section:
+class Section(object):
   """A section consists of a section title and a data table."""
   SECTION_HTML = '''
   <h2>{title}</h2>
@@ -69,145 +70,135 @@ class Section:
     self._table = table
 
   def generate(self):
-    return Section.SECTION_HTML.format(title=self._title, table=self._table)
+    return Section.SECTION_HTML.format(
+      title=self._title,
+      table=self._table.generate()
+    )
 
-class Table:
+class Table(object):
   TABLE_HTML = '''
     <table class="table">
       {header}
       {rows}
-      {average}
     </table>
   '''
+  ROW_HTML = '<tr>{cells}</tr>'
+  HEADER_HTML = '<th>{title}</th>'
+  CELL_HTML = '<td>{value}</td>'
 
-  def __init__(self):
-    pass
+  def __init__(self, table_spec, data):
+    self._table_spec = table_spec
+    self._data = data
+
+  def _generate_rows(self):
+    rows = []
+    for data_row in self._data:
+      rows.append(self._table_spec.generate_row(data_row))
+    return ''.join(rows)
 
   def generate(self):
-    pass
+    header = self._table_spec.generate_header()
+    rows = self._generate_rows()
+    return Table.TABLE_HTML.format(header=header, rows=rows)
 
-TABLE_HEADER = '<tr>{cols}</tr>'.format(
-  cols=''.join([
-    '<th>{col}</th>'.format(col=description)
-    for name, description in features.FEATURES
-  ])
-)
+class TableSpec(object):
+  ROW_HTML = '<tr>{cells}</tr>'
+  def __init__(self, keys):
+    self._columns = []
+    for key in keys:
+      self._columns.append(column_factory(key))
 
-TIMELINE_HEADER = '''
-<tr>
-  <th>User ID</th><th>Webcam timeline. Left=green, Right=blue, Other=yellow</th>
-</tr>
-'''
+  def generate_header(self):
+    headers = []
+    for col in self._columns:
+      headers.append(col.generate_header())
+    return TableSpec.ROW_HTML.format(cells=''.join(headers))
 
+  def generate_row(self, data_row):
+    cells = []
+    for col in self._columns:
+      cells.append(col.generate_cell(data_row))
+    return TableSpec.ROW_HTML.format(cells=''.join(cells))
 
-PROGRESS_CLASSES = ['success', 'info', 'warning', 'danger']
+class DistributionSpec(object):
+  def __init__(self, keys):
+    self.keys = keys
 
-PERSONAL_FEATURES = [features.SURVEY_FEATURES[x] for x in [
-  26, 27, 23, 24, 25, 28, 30, 29
-]]
+class SurveySpec(object):
+  def __init__(self, keys):
+    self.keys = keys
 
-TROUBLE_FEATURES = [features.SURVEY_FEATURES[x] for x in [
-  17, 18, 19, 20, 21, 2, 22
-]]
+class ObjectCountSpec(object):
+  def __init__(self, keys):
+    self.keys = keys
+      
+def column_factory(key):
+  if type(key) == str:
+    _, feature_type = features.FEATURES[key]
+    if feature_type == 'id':
+      return IdColumn(key)
+    elif feature_type == 'duration':
+      return DurationColumn(key)
+    elif feature_type == 'count':
+      return CountColumn(key)
+    elif feature_type == 'timeline':
+      return TimelineColumn(key)
+    elif feature_type == 'timestamp':
+      return TimestampColumn(key)
+    elif feature_type == 'string':
+      return StringColumn(key)
+    elif feature_type == 'objectcount':
+      return ObjectCountColumn(key)
+    elif feature_type == 'yesno':
+      return YesNoColumn(key)
+  elif type(key) == DistributionSpec:
+    return DistributionColumn(key.keys)
+  elif type(key) == SurveySpec:
+    return SurveyColumn(key.keys)
+  elif type(key) == ObjectCountSpec:
+    return ObjectCountColumn(key.keys)
+  
+class DataColumn(object):
+  HEADER_HTML = '<th>{}</th>'
+  CELL_HTML = '<td>{}</td>'
+  def __init__(self, key):
+    self._key = key
+    self._title, _ = features.FEATURES[key]
 
-PCL_FEATURES = [features.SURVEY_FEATURES[x] for x in [
-  3, 4, 5, 6, 7, 8, 15
-]]
+  def generate_header(self):
+    return DataColumn.HEADER_HTML.format(self._title)
 
-CAM_FEATURES = [features.SURVEY_FEATURES[x] for x in [
-  9, 10, 11, 12, 13, 14, 16
-]]
+  def generate_cell(self, data):
+    return DataColumn.CELL_HTML.format(data[self._key])
 
-def generate_data_table(all_data):
-  rows = []
-  for data, timeline, survey in all_data:
-    left_right_time = data.left_time + data.right_time
-    mean_total = data.mean_left + data.mean_right
-    stddev_total = data.left_stddev + data.right_stddev
-    looks_total = (
-      data.num_left_looks + data.num_right_looks
+class IdColumn(DataColumn):
+  pass
+
+class DurationColumn(DataColumn):
+  def generate_cell(self, data):
+    return DataColumn.CELL_HTML.format(utils.format_duration(data[self._key]))
+
+class CountColumn(DataColumn):
+  pass
+
+class TimelineColumn(DataColumn):
+  EVENT_HTML = '''
+    <div class="progress-bar progress-bar-{}" style="width: {}%">
+    </div>
+  '''
+  TIMELINE_HTML = '''
+  <div class="progress">
+    {events}
+  </div>
+  '''
+  
+  def generate_header(self):
+    return DataColumn.HEADER_HTML.format(
+      'Webcam timeline. Left=green, Right=blue, Other=yellow'
     )
 
-    values = ''.join([
-      '<td>{}</td>'.format(data.user_id),
-      '<td>{}</td>'.format(utils.format_duration(data.time_taken)),
-      '''<td colspan=3>
-        <div class="progress">
-          <div class="progress-bar progress-bar-success" style="width: {}%">
-            {}
-          </div>
-          <div class="progress-bar progress-bar-info" style="width: {}%">
-            {}
-          </div>
-          <div class="progress-bar progress-bar-danger" style="width: {}%">
-            {}
-          </div>
-        </div>
-      </td>'''.format(
-        100 * data.camera_movement_time.to_sec() / data.time_taken.to_sec(),
-        utils.format_duration(data.camera_movement_time),
-        100 * data.marker_movement_time.to_sec() / data.time_taken.to_sec(),
-        utils.format_duration(data.marker_movement_time),
-        100 * data.other_time.to_sec() / data.time_taken.to_sec(),
-        utils.format_duration(data.other_time)
-      ),
-      '<td>{}</td>'.format(data.grasp_count),
-      '''<td colspan=2>
-        <div class="progress">
-          <div class="progress-bar progress-bar-success" style="width: {}%">
-            {}
-          </div>
-          <div class="progress-bar progress-bar-info" style="width: {}%">
-            {}
-          </div>
-        </div>
-      </td>'''.format(
-        100 * data.left_time.to_sec() / left_right_time.to_sec(),
-        utils.format_duration(data.left_time),
-        100 * data.right_time.to_sec() / left_right_time.to_sec(),
-        utils.format_duration(data.right_time)
-      ),
-      '''<td colspan=2>
-        <div class="progress">
-          <div class="progress-bar progress-bar-success" style="width: {}%">
-            {}
-          </div>
-          <div class="progress-bar progress-bar-info" style="width: {}%">
-            {}
-          </div>
-        </div>
-      </td>'''.format(
-        100 * data.mean_left.to_sec() / mean_total.to_sec(),
-        utils.format_duration(data.mean_left),
-        100 * data.mean_right.to_sec() / mean_total.to_sec(),
-        utils.format_duration(data.mean_right)
-      ),
-      '''<td colspan=2>
-        <div class="progress">
-          <div class="progress-bar progress-bar-success" style="width: {}%">
-            {}
-          </div>
-          <div class="progress-bar progress-bar-info" style="width: {}%">
-            {}
-          </div>
-        </div>
-      </td>'''.format(
-        100 * data.left_stddev.to_sec() / stddev_total.to_sec(),
-        utils.format_duration(data.left_stddev),
-        100 * data.right_stddev.to_sec() / stddev_total.to_sec(),
-        utils.format_duration(data.right_stddev)
-      ),
-      '<td>{}</td>'.format(data.num_left_looks),
-      '<td>{}</td>'.format(data.num_right_looks)
-    ])
-    row = '<tr>{values}</tr>'.format(values=values)
-    rows.append(row)
-  table = TABLE_HTML.format(header=TABLE_HEADER, rows=''.join(rows))
-  return table
-
-def generate_timeline_table(all_data):
-  rows = []
-  for data, timeline, survey in all_data:
+  def generate_cell(self, data):
+    timeline = data[self._key]
     timeline_events = []
     total_time = sum([delta.to_sec() for delta, state in timeline])
     for delta, state in timeline:
@@ -219,80 +210,253 @@ def generate_timeline_table(all_data):
       else:
         color = 'warning'
       percentage = 100 * delta.to_sec() / total_time
-      timeline_event = '''
-        <div class="progress-bar progress-bar-{}" style="width: {}%">
-        </div>
-      '''.format(color, percentage)
+      timeline_event = TimelineColumn.EVENT_HTML.format(color, percentage)
       timeline_events.append(timeline_event)
-    timeline_html = '''
-    <div class="progress">
-      {events}
-    </div>
-    '''.format(events=''.join(timeline_events))
-    row = '<tr><td>{user_id}</td><td>{timeline_html}</td></tr>'.format(
-      user_id=data.user_id,
-      timeline_html=timeline_html
+    timeline_html = TimelineColumn.TIMELINE_HTML.format(
+      events=''.join(timeline_events)
     )
-    rows.append(row)
-  table = TABLE_HTML.format(header=TIMELINE_HEADER, rows=''.join(rows))
-  return table
+    return DataColumn.CELL_HTML.format(timeline_html)
 
-def generate_survey_table(all_data, section_features):
-  header = '<tr><th>User ID</th>{cols}</tr>'.format(
-    cols=''.join([
-      '<th>{col}</th>'.format(col=description)
-      for name, description, is_likert in section_features
-    ])
-  )
-  rows = []
-  for data, timeline, survey in all_data:
-    survey_dict = survey._asdict()
-    values = []
-    class_index = 0 # Cycle through CSS classes for progress bars.
-    for name, description, is_likert in section_features:
-      value = survey_dict[name]
-      if is_likert:
-        color = PROGRESS_CLASSES[class_index]
-        class_index = (class_index + 1) % len(PROGRESS_CLASSES)
-        value = '''
-          <div class="progress">
-            <div class="progress-bar progress-bar-{}" style="width: {}%">
-              {}
-            </div>
-          </div>
-        '''.format(color, 100 * survey_dict[name] / 4, survey_dict[name])
-      elif type(value) == type(0): # Number of objects collected/possible.
-        color = PROGRESS_CLASSES[class_index]
-        class_index = (class_index + 1) % len(PROGRESS_CLASSES)
-        value = '''
-          <div class="progress">
-            <div class="progress-bar progress-bar-{}" style="width: {}%">
-              {}
-            </div>
-          </div>
-        '''.format(color, 100 * survey_dict[name] / 6, survey_dict[name])
-      values.append('<td>{}</td>'.format(value))
-    row = '<tr><td>{}</td>{}</tr>'.format(data.user_id, ''.join(values))
-    rows.append(row)
-  table = TABLE_HTML.format(header=header, rows=''.join(rows))
-  return table
+class TimestampColumn(DataColumn):
+  pass
 
-def generate(all_data):
+class StringColumn(DataColumn):
+  pass
+
+class SurveyColumn(DataColumn):
+  LIKERT_HTML = '''
+    <td>
+      <div class="progress">
+        <div class="progress-bar progress-bar-{cls}"
+          style="width: {percentage}%">
+          {content}
+        </div>
+      </div>
+    </td>
+  '''
+  CLASSES = ['success', 'info', 'warning', 'danger']
+
+  def __init__(self, keys):
+    self._keys = keys
+
+  def generate_header(self):
+    headers = []
+    for key in self._keys:
+      title, _ = features.FEATURES[key]
+      header = DataColumn.HEADER_HTML.format(title)
+      headers.append(header)
+    return ''.join(headers)
+
+  def generate_cell(self, data):
+    cells = []
+    for i, key in enumerate(self._keys):
+      value = data[key]
+      class_index = i % len(SurveyColumn.CLASSES)
+      cell = SurveyColumn.LIKERT_HTML.format(
+        cls=SurveyColumn.CLASSES[class_index],
+        percentage=100 * value / 4,
+        content=value
+      )
+      cells.append(cell)
+    return ''.join(cells)
+
+class ObjectCountColumn(DataColumn):
+  COUNT_HTML = '''
+    <td>
+      <div class="progress">
+        <div class="progress-bar progress-bar-{cls}"
+          style="width: {percentage}%">
+          {content}
+        </div>
+      </div>
+    </td>
+  '''
+  CLASSES = ['success', 'info']
+
+  def __init__(self, keys):
+    self._keys = keys
+
+  def generate_header(self):
+    headers = []
+    for key in self._keys:
+      title, _ = features.FEATURES[key]
+      header = DataColumn.HEADER_HTML.format(title)
+      headers.append(header)
+    return ''.join(headers)
+
+  def generate_cell(self, data):
+    cells = []
+    for i, key in enumerate(self._keys):
+      value = data[key]
+      class_index = i % len(ObjectCountColumn.CLASSES)
+      cell = ObjectCountColumn.COUNT_HTML.format(
+        cls=ObjectCountColumn.CLASSES[class_index],
+        percentage=100 * value / 6,
+        content=value
+      )
+      cells.append(cell)
+    return ''.join(cells)
+
+class YesNoColumn(DataColumn):
+  pass
+
+class DistributionColumn(DataColumn):
+  DISTRIBUTION_HTML = '''
+    <td colspan={num_parts}>
+      <div class="progress">
+        {distribution}
+      </div>
+    </td>
+  '''
+  PART_HTML = '''
+    <div class="progress-bar progress-bar-{cls}" style="width: {percentage}%">
+      {content}
+    </div>
+  '''
+  CLASSES = ['success', 'info', 'danger']
+
+  def __init__(self, keys):
+    self._keys = keys
+
+  def generate_header(self):
+    headers = []
+    for key in self._keys:
+      title, _ = features.FEATURES[key]
+      header = DataColumn.HEADER_HTML.format(title)
+      headers.append(header)
+    return ''.join(headers)
+
+  def generate_cell(self, data):
+    data = [data[key] for key in self._keys]
+
+    total = genpy.Duration(0)
+    for duration in data:
+      total += duration
+
+    parts = []
+    for i, duration in enumerate(data):
+      class_index = i % len(DistributionColumn.CLASSES)
+      part_class = DistributionColumn.CLASSES[class_index]
+      percentage = 100 * duration.to_sec() / total.to_sec()
+      content = utils.format_duration(duration)
+      parts.append(
+        DistributionColumn.PART_HTML.format( cls=part_class,
+          percentage=percentage,
+          content=content
+        )
+      )
+    num_parts = len(parts)
+    distribution_html = ''.join(parts)
+    return DistributionColumn.DISTRIBUTION_HTML.format(
+      num_parts=num_parts,
+      distribution=distribution_html
+    )
+
+DATA_SPEC = TableSpec(
+  [
+    'user_id',
+    'time_taken',
+    DistributionSpec(
+      ['camera_movement_time', 'marker_movement_time', 'other_time']
+    ),
+    'grasp_count',
+    DistributionSpec(['left_time', 'right_time']),
+    DistributionSpec(['mean_left', 'mean_right']),
+    DistributionSpec(['left_stddev', 'right_stddev']),
+    'num_left_looks',
+    'num_right_looks'
+  ]
+)
+
+TIMELINE_SPEC = TableSpec(['user_id', 'timeline'])
+
+PERSONAL_SPEC = TableSpec(
+  [
+    'user_id',
+    ObjectCountSpec(
+      [
+        'num_collected',
+        'num_possible'
+      ]
+    ),
+    SurveySpec(
+      [
+        'prior_gaming',
+        'prior_modeling',
+        'prior_remote_control',
+        'prior_robotics'
+      ]
+    ),
+    'prior_study',
+    'other_comments'
+  ]
+)
+
+TROUBLE_SPEC = TableSpec(
+  [
+    'user_id',
+    SurveySpec(
+      [
+        'trouble_moving_gripper',
+        'trouble_slow_interface',
+        'trouble_arm_blocking',
+        'trouble_unrecognizable',
+        'trouble_locating'
+      ]
+    ),
+    'strategy',
+    'most_trouble'
+  ]
+)
+
+PCL_SPEC = TableSpec(
+  [
+    SurveySpec(
+      [
+        'pcl_could_see',
+        'pcl_could_recognize',
+        'pcl_could_reach',
+        'pcl_could_judge_dist',
+        'pcl_used_more',
+        'pcl_could_go_without'
+      ]
+    ),
+    'pcl_advantages'
+  ]
+)
+
+CAM_SPEC = TableSpec(
+  [
+    SurveySpec(
+      [
+        'cam_could_see',
+        'cam_could_recognize',
+        'cam_could_reach',
+        'cam_could_judge_dist',
+        'cam_used_more',
+        'cam_could_go_without'
+      ]
+    ),
+    'cam_advantages'
+  ]
+)
+
+def generate(data):
   title = 'Robot teleoperation interface data'
-  data_table = generate_data_table(all_data)
+  data_table = Table(DATA_SPEC, data)
   data_section = Section('Experiment data', data_table)
-  timeline_table = generate_timeline_table(all_data)
+  timeline_table = Table(TIMELINE_SPEC, data)
   timeline_section = Section('Webcam timeline', timeline_table)
-  personal_table = generate_survey_table(all_data, PERSONAL_FEATURES)
+  personal_table = Table(PERSONAL_SPEC, data)
   personal_section = Section('User info', personal_table)
-  trouble_table = generate_survey_table(all_data, TROUBLE_FEATURES)
+  trouble_table = Table(TROUBLE_SPEC, data)
   trouble_section = Section('Troubles and strategy', trouble_table)
-  pcl_table = generate_survey_table(all_data, PCL_FEATURES)
+  pcl_table = Table(PCL_SPEC, data)
   pcl_section = Section('Point cloud view', pcl_table)
-  cam_table = generate_survey_table(all_data, CAM_FEATURES)
+  cam_table = Table(CAM_SPEC, data)
   cam_section = Section('Camera view', cam_table)
   page = Page(
-    title, data_section, personal_section, trouble_section, pcl_section, cam_section,
-    timeline_section
+    title, data_section, personal_section, trouble_section, pcl_section,
+    cam_section, timeline_section
   )
   return page.generate()
