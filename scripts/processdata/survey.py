@@ -53,11 +53,11 @@ def transform(line_parts):
   row_dict = {}
   user_id = None
   for part, key in zip(line_parts, SURVEY_MAP):
-    if key == 'prior_study' and part != 'No':
-      part = 'Yes'
-    if key == 'num_collected' or key == 'num_possible':
-      part = int(part)
     _, key_type = features.FEATURES[key]
+    if key_type == 'yesno' and part != 'No':
+      part = 'Yes'
+    if key_type == 'count' or key_type == 'objectcount':
+      part = int(part)
     if key_type == 'likert':
       part = convert_likert(part)
     if key != 'user_id':

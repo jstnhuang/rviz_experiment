@@ -80,6 +80,7 @@ class Table(object):
     <table class="table">
       {header}
       {rows}
+      {summary}
     </table>
   '''
   ROW_HTML = '<tr>{cells}</tr>'
@@ -99,7 +100,8 @@ class Table(object):
   def generate(self):
     header = self._table_spec.generate_header()
     rows = self._generate_rows()
-    return Table.TABLE_HTML.format(header=header, rows=rows)
+    summary = self._table_spec.generate_summary(self._data)
+    return Table.TABLE_HTML.format(header=header, rows=rows, summary=summary)
 
 class TableSpec(object):
   ROW_HTML = '<tr>{cells}</tr>'
@@ -118,6 +120,12 @@ class TableSpec(object):
     cells = []
     for col in self._columns:
       cells.append(col.generate_cell(data_row))
+    return TableSpec.ROW_HTML.format(cells=''.join(cells))
+
+  def generate_summary(self, all_data):
+    cells = []
+    for col in self._columns:
+      cells.append(col.generate_summary(all_data))
     return TableSpec.ROW_HTML.format(cells=''.join(cells))
 
 class DistributionSpec(object):
@@ -161,6 +169,7 @@ def column_factory(key):
 class DataColumn(object):
   HEADER_HTML = '<th>{}</th>'
   CELL_HTML = '<td>{}</td>'
+
   def __init__(self, key):
     self._key = key
     self._title, _ = features.FEATURES[key]
@@ -171,15 +180,33 @@ class DataColumn(object):
   def generate_cell(self, data):
     return DataColumn.CELL_HTML.format(data[self._key])
 
+  def _round(self, num, precision=2):
+    return round(num, precision)
+
+  def generate_summary(self, all_data):
+    return DataColumn.CELL_HTML.format('')
+
 class IdColumn(DataColumn):
-  pass
+  def generate_summary(self, all_data):
+    return DataColumn.CELL_HTML.format('<strong>Average</strong>')
 
 class DurationColumn(DataColumn):
   def generate_cell(self, data):
     return DataColumn.CELL_HTML.format(utils.format_duration(data[self._key]))
 
+  def generate_summary(self, all_data):
+    durations = [x[self._key] for x in all_data]
+    average = genpy.Duration(0)
+    for duration in durations:
+      average += duration
+    average /= len(durations)
+    return DataColumn.CELL_HTML.format(utils.format_duration(average))
+
 class CountColumn(DataColumn):
-  pass
+  def generate_summary(self, all_data):
+    counts = [x[self._key] for x in all_data]
+    average = sum(counts) / len(counts)
+    return DataColumn.CELL_HTML.format(self._round(average))
 
 class TimelineColumn(DataColumn):
   EVENT_HTML = '''
@@ -260,6 +287,20 @@ class SurveyColumn(DataColumn):
       cells.append(cell)
     return ''.join(cells)
 
+  def generate_summary(self, all_data):
+    cells = []
+    for i, key in enumerate(self._keys):
+      class_index = i % len(SurveyColumn.CLASSES)
+      counts = [x[key] for x in all_data]
+      average = sum(counts) / len(counts)
+      cell = SurveyColumn.LIKERT_HTML.format(
+        cls=SurveyColumn.CLASSES[class_index],
+        percentage=100 * average / 4,
+        content=self._round(average)
+      )
+      cells.append(cell)
+    return ''.join(cells)
+
 class ObjectCountColumn(DataColumn):
   COUNT_HTML = '''
     <td>
@@ -297,8 +338,26 @@ class ObjectCountColumn(DataColumn):
       cells.append(cell)
     return ''.join(cells)
 
+  def generate_summary(self, all_data):
+    cells = []
+    for i, key in enumerate(self._keys):
+      counts = [x[key] for x in all_data]
+      class_index = i % len(ObjectCountColumn.CLASSES)
+      average = sum(counts) / len(counts)
+      cell = ObjectCountColumn.COUNT_HTML.format(
+        cls=ObjectCountColumn.CLASSES[class_index],
+        percentage=100 * average / 6,
+        content=self._round(average)
+      )
+      cells.append(cell)
+    return ''.join(cells)
+
 class YesNoColumn(DataColumn):
-  pass
+  def generate_summary(self, all_data):
+    values = [x[self._key] for x in all_data]
+    values = [1 if value == 'Yes' else 0 for value in values]
+    average = self._round(sum(values) / len(values))
+    return DataColumn.CELL_HTML.format(average)
 
 class DistributionColumn(DataColumn):
   DISTRIBUTION_HTML = '''
@@ -341,6 +400,38 @@ class DistributionColumn(DataColumn):
       content = utils.format_duration(duration)
       parts.append(
         DistributionColumn.PART_HTML.format( cls=part_class,
+          percentage=percentage,
+          content=content
+        )
+      )
+    num_parts = len(parts)
+    distribution_html = ''.join(parts)
+    return DistributionColumn.DISTRIBUTION_HTML.format(
+      num_parts=num_parts,
+      distribution=distribution_html
+    )
+
+  def generate_summary(self, all_data):
+    data = [[x[key] for x in all_data] for key in self._keys]
+    averages = [genpy.Duration(0) for key in self._keys]
+    for i, col in enumerate(data):
+      for x in col:
+        averages[i] += x
+      averages[i] /= len(col)
+
+    total_average = genpy.Duration(0)
+    for average in averages:
+      total_average += average
+
+    parts = []
+    for i, duration in enumerate(averages):
+      class_index = i % len(DistributionColumn.CLASSES)
+      part_class = DistributionColumn.CLASSES[class_index]
+      percentage = 100 * duration.to_sec() / total_average.to_sec()
+      content = utils.format_duration(duration)
+      parts.append(
+        DistributionColumn.PART_HTML.format(
+          cls=part_class,
           percentage=percentage,
           content=content
         )
@@ -411,6 +502,7 @@ TROUBLE_SPEC = TableSpec(
 
 PCL_SPEC = TableSpec(
   [
+    'user_id',
     SurveySpec(
       [
         'pcl_could_see',
@@ -427,6 +519,7 @@ PCL_SPEC = TableSpec(
 
 CAM_SPEC = TableSpec(
   [
+    'user_id',
     SurveySpec(
       [
         'cam_could_see',
