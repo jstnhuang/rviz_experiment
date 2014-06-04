@@ -1,0 +1,12 @@
+<launch>
+  <arg name="user" />
+  <arg name="condition" />
+
+  <arg name="data_dir" value="/home/jstn/Dropbox/experiment_data" />
+  <arg name="nocam_data_dir" value="/home/jstn/Dropbox/nocam_data" />
+  <arg name="output_dir" value="/home/jstn/Dropbox/nocam_data" />
+  <node pkg="rviz_experiment" type="grippers.py" name="gripper_playback"
+    args="$(arg nocam_data_dir)/$(arg user)_$(arg condition).bag $(arg data_dir)/$(arg user)_$(arg condition).bag $(arg output_dir)/$(arg user)_$(arg condition)_grasps.tsv" />
+  <node pkg="image_view" type="image_view" name="kinect_viewer"
+    args="image:=head_mount_kinect/rgb/image_color compressed" />
+</launch>
