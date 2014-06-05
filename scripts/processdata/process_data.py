@@ -25,12 +25,15 @@ EXPERIMENT_TOPICS = [
   topics.MARKER_FEEDBACK
 ]
 
-UserData = namedtuple('UserData', ['user_id', 'experiment_file', 'webcam_file'])
+UserData = namedtuple('UserData',
+  ['user_id', 'experiment_file', 'webcam_file', 'object_file']
+)
 
 def collate_files(filenames):
   """Collate data files by user ID."""
   experiment_data = {}
   webcam_data = {}
+  object_data = {}
   for filename in filenames:
     name_parts = filename.split('_')
     user_id = name_parts[0]
@@ -39,12 +42,17 @@ def collate_files(filenames):
       experiment_data[user_id] = filename
     elif end == 'code.bag':
       webcam_data[user_id] = filename
+    elif end == 'grasps.tsv':
+      object_data[user_id] = filename
 
   user_data = []
   for user_id, experiment_file in experiment_data.items():
-    if user_id in webcam_data:
+    if user_id in webcam_data and user_id in object_data:
       webcam_file = webcam_data[user_id]
-      user_data.append(UserData(user_id, experiment_file, webcam_file))
+      object_file = object_data[user_id]
+      user_data.append(
+        UserData(user_id, experiment_file, webcam_file, object_file)
+      )
   return user_data
 
 def open_bag(filename):
@@ -100,7 +108,7 @@ def process_code(path):
     model = message_factory.model(message)
     if model is None:
       continue
-    code_processor.update(topic, model, time) 
+    code_processor.update(topic, model, time)
   bag.close()
   return {
     'left_time': code_processor.left_time(),
@@ -114,24 +122,47 @@ def process_code(path):
     'timeline': code_processor.timeline()
   }
 
+def process_objects(path):
+  print('Processing', path)
+  with open(path) as timeline:
+    object_processor = processors.Objects()
+    for line in timeline:
+      line = line.strip()
+      parts = line.split('\t')
+      start_time = float(parts[0])
+      duration = float(parts[1])
+      side = parts[2]
+      obj = parts[3]
+      object_processor.update(start_time, duration, side, obj)
+    object_processor.update_last()
+  return {
+    'object_timeline': object_processor.timeline()
+  }
+
 def process(data_dir, user_data, survey_data):
+  pool = multiprocessing.Pool(processes=12)
   user_ids = [user.user_id for user in user_data]
   experiment_paths = [
     '/'.join([data_dir, user.experiment_file]) for user in user_data
   ]
-  pool = multiprocessing.Pool(processes=12)
   experiment_features = pool.map(process_experiment, experiment_paths)
   webcam_paths = [
     '/'.join([data_dir, user.webcam_file]) for user in user_data
   ]
   webcam_features = pool.map(process_code, webcam_paths)
+  object_paths = [
+    '/'.join([data_dir, user.object_file]) for user in user_data
+  ]
+  object_features = pool.map(process_objects, object_paths)
 
   all_data = []
-  for user_id, exp, cam, survey in zip(
-    user_ids, experiment_features, webcam_features, survey_data):
+  for user_id, exp, cam, obj, survey in zip(
+    user_ids, experiment_features, webcam_features, object_features,
+    survey_data):
     data = {'user_id': user_id}
     data.update(exp)
     data.update(cam)
+    data.update(obj)
     data.update(survey)
     all_data.append(data)
 

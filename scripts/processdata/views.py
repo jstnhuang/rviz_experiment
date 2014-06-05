@@ -32,13 +32,14 @@ class Page(object):
           {pcl_section}
           {cam_section}
           {timeline_section}
+          {focused_object_section}
         </div>
       </body>
     </html>
   '''
   def __init__(
     self, title, data_section, personal_section, trouble_section, pcl_section,
-    cam_section, timeline_section
+    cam_section, timeline_section, focused_object_section
   ):
     self._title = title
     self._data_section = data_section
@@ -47,6 +48,7 @@ class Page(object):
     self._pcl_section = pcl_section
     self._cam_section = cam_section
     self._timeline_section = timeline_section
+    self._focused_object_section = focused_object_section
 
   def generate(self):
     return Page.BASE_HTML.format(
@@ -56,7 +58,8 @@ class Page(object):
       trouble_section=self._trouble_section.generate(),
       pcl_section=self._pcl_section.generate(),
       cam_section=self._cam_section.generate(),
-      timeline_section=self._timeline_section.generate()
+      timeline_section=self._timeline_section.generate(),
+      focused_object_section=self._focused_object_section.generate()
     )
 
 class Section(object):
@@ -151,6 +154,8 @@ def column_factory(key):
       return CountColumn(key)
     elif feature_type == 'timeline':
       return TimelineColumn(key)
+    elif feature_type == 'object_timeline':
+      return ObjectTimelineColumn(key)
     elif feature_type == 'timestamp':
       return TimestampColumn(key)
     elif feature_type == 'string':
@@ -226,6 +231,13 @@ class TimelineColumn(DataColumn):
 
   def generate_cell(self, data):
     timeline = data[self._key]
+    first_look = 0
+    for i in range(len(timeline)):
+      delta, state = timeline[i]
+      if state != 'other':
+        first_look = i
+        break
+    timeline = timeline[first_look:]
     timeline_events = []
     total_time = sum([delta.to_sec() for delta, state in timeline])
     for delta, state in timeline:
@@ -238,6 +250,52 @@ class TimelineColumn(DataColumn):
         color = 'warning'
       percentage = 100 * delta.to_sec() / total_time
       timeline_event = TimelineColumn.EVENT_HTML.format(color, percentage)
+      timeline_events.append(timeline_event)
+    timeline_html = TimelineColumn.TIMELINE_HTML.format(
+      events=''.join(timeline_events)
+    )
+    return DataColumn.CELL_HTML.format(timeline_html)
+
+class ObjectTimelineColumn(DataColumn):
+  EVENT_HTML = '''
+    <div class="progress-bar" style="background-color: {}; background-image:
+    none; width: {}%">
+    </div>
+  '''
+  TIMELINE_HTML = '''
+  <div class="progress">
+    {events}
+  </div>
+  '''
+  LEGEND = {
+    'bowl': '#D78D92',
+    'cup': '#B7D78D',
+    'tape': '#89D6DB',
+    'tennis': '#D7D28D',
+    'cube': '#D7AD8D',
+    'other': 'grey'
+  }
+  LEGEND_HTML = '<span style="background-color: {}">{}</span>'
+
+  def _generate_legend(self):
+    items = []
+    for obj, color in ObjectTimelineColumn.LEGEND.items():
+      items.append(ObjectTimelineColumn.LEGEND_HTML.format(color, obj))
+    return ', '.join(items)
+  
+  def generate_header(self):
+    return DataColumn.HEADER_HTML.format(
+      'Focused object timeline. Legend: {}'.format(self._generate_legend())
+    )
+
+  def generate_cell(self, data):
+    timeline = data[self._key]
+    timeline_events = []
+    _, total_time, _ = timeline[-1]
+    for start_time, end_time, obj in timeline:
+      color = ObjectTimelineColumn.LEGEND[obj]
+      percentage = 100 * (end_time - start_time) / total_time
+      timeline_event = ObjectTimelineColumn.EVENT_HTML.format(color, percentage)
       timeline_events.append(timeline_event)
     timeline_html = TimelineColumn.TIMELINE_HTML.format(
       events=''.join(timeline_events)
@@ -300,7 +358,6 @@ class SurveyColumn(DataColumn):
       )
       cells.append(cell)
     return ''.join(cells)
-
 class ObjectCountColumn(DataColumn):
   COUNT_HTML = '''
     <td>
@@ -460,6 +517,7 @@ DATA_SPEC = TableSpec(
 )
 
 TIMELINE_SPEC = TableSpec(['user_id', 'timeline'])
+FOCUSED_OBJECT_SPEC = TableSpec(['user_id', 'object_timeline'])
 
 PERSONAL_SPEC = TableSpec(
   [
@@ -540,6 +598,9 @@ def generate(data):
   data_section = Section('Experiment data', data_table)
   timeline_table = Table(TIMELINE_SPEC, data)
   timeline_section = Section('Webcam timeline', timeline_table)
+  focused_object_table = Table(FOCUSED_OBJECT_SPEC, data)
+  focused_object_section = Section('Focused objects timeline',
+    focused_object_table)
   personal_table = Table(PERSONAL_SPEC, data)
   personal_section = Section('User info', personal_table)
   trouble_table = Table(TROUBLE_SPEC, data)
@@ -550,6 +611,6 @@ def generate(data):
   cam_section = Section('Camera view', cam_table)
   page = Page(
     title, data_section, personal_section, trouble_section, pcl_section,
-    cam_section, timeline_section
+    cam_section, timeline_section, focused_object_section
   )
   return page.generate()

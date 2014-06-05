@@ -181,3 +181,27 @@ class Code:
 
   def timeline(self):
     return self._timeline
+
+class Objects:
+  def __init__(self):
+    self._timeline = []
+    self._last_object = None
+    self._last_start_time = 0
+    self._last_end_time = 0
+
+  def update(self, start_time, duration, side, obj):
+    if self._last_object is not None and obj != self._last_object:
+      self._timeline.append(
+        (self._last_start_time, self._last_end_time, self._last_object)
+      )
+      self._last_start_time = start_time
+    self._last_object = obj
+    self._last_end_time = start_time + duration
+
+  def update_last(self):
+    self._timeline.append(
+      (self._last_start_time, self._last_end_time, self._last_object)
+    )
+
+  def timeline(self):
+    return self._timeline

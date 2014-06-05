@@ -14,6 +14,7 @@ FEATURES = {
   'num_left_looks': ('Number of left looks', 'count'),
   'num_right_looks': ('Number of right looks', 'count'),
   'timeline': ('Webcam timeline', 'timeline'),
+  'object_timeline': ('Focused object timeline', 'object_timeline'),
   'timestamp': ('Timestamp', 'timestamp'),
   'strategy': ('Strategy for picking up an object', 'string'),
   'pcl_could_see': ('3D - could see objects', 'likert'),
