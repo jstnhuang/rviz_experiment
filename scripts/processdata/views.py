@@ -48,6 +48,7 @@ class Page(object):
           {trouble_section}
           {pcl_section}
           {cam_section}
+          {exp_timeline_section}
           {timeline_section}
           {focused_object_section}
         </div>
@@ -56,7 +57,7 @@ class Page(object):
   '''
   def __init__(
     self, title, data_section, personal_section, trouble_section, pcl_section,
-    cam_section, timeline_section, focused_object_section
+    cam_section, exp_timeline_section, timeline_section, focused_object_section
   ):
     self._title = title
     self._data_section = data_section
@@ -64,6 +65,7 @@ class Page(object):
     self._trouble_section = trouble_section
     self._pcl_section = pcl_section
     self._cam_section = cam_section
+    self._exp_timeline_section = exp_timeline_section
     self._timeline_section = timeline_section
     self._focused_object_section = focused_object_section
 
@@ -75,6 +77,7 @@ class Page(object):
       trouble_section=self._trouble_section.generate(),
       pcl_section=self._pcl_section.generate(),
       cam_section=self._cam_section.generate(),
+      exp_timeline_section=self._exp_timeline_section.generate(),
       timeline_section=self._timeline_section.generate(),
       focused_object_section=self._focused_object_section.generate()
     )
@@ -233,6 +236,8 @@ def column_factory(key):
       return TimelineColumn(key)
     elif feature_type == 'object_timeline':
       return ObjectTimelineColumn(key)
+    elif feature_type == 'exp_timeline':
+      return ExperimentTimelineColumn(key)
     elif feature_type == 'timestamp':
       return TimestampColumn(key)
     elif feature_type == 'string':
@@ -376,6 +381,58 @@ class ObjectTimelineColumn(DataColumn):
         if total_time != 0 else 0
       )
       timeline_event = ObjectTimelineColumn.EVENT_HTML.format(color, percentage)
+      timeline_events.append(timeline_event)
+    timeline_html = TimelineColumn.TIMELINE_HTML.format(
+      events=''.join(timeline_events)
+    )
+    return DataColumn.CELL_HTML.format(timeline_html)
+
+class ExperimentTimelineColumn(DataColumn):
+  EVENT_HTML = '''
+    <div class="progress-bar" style="background-color: {}; background-image:
+    none; width: {}%">
+    </div>
+  '''
+  TIMELINE_HTML = '''
+  <div class="progress">
+    {events}
+  </div>
+  '''
+  LEGEND = {
+    'camera': '#5cb85c',
+    'marker': '#5bc0de',
+    'other': '#ddd',
+    }
+  LEGEND_HTML = '<span style="background-color: {}">{}</span>'
+
+  def _generate_legend(self):
+    items = []
+    for obj, color in ExperimentTimelineColumn.LEGEND.items():
+      items.append(ExperimentTimelineColumn.LEGEND_HTML.format(color, obj))
+    return ', '.join(items)
+
+  def generate_header(self):
+    return DataColumn.HEADER_HTML.format(
+      'Experiment timeline. Legend: {}'.format(self._generate_legend())
+    )
+
+  def generate_cell(self, data):
+    timeline = data[self._key]
+
+    first_look = 0
+    for i in range(len(timeline)):
+      time, delta, state = timeline[i]
+      if state != 'other':
+        first_look = i
+        break
+    timeline = timeline[first_look:]
+
+    timeline_events = []
+    total_time = sum([delta for time, delta, state in timeline])
+    for time, delta, state in timeline:
+      color = ExperimentTimelineColumn.LEGEND[state]
+      percentage = 100 * delta / total_time if total_time != 0 else 0
+      timeline_event = self.EVENT_HTML.format(color, percentage)
       timeline_events.append(timeline_event)
     timeline_html = TimelineColumn.TIMELINE_HTML.format(
       events=''.join(timeline_events)
@@ -596,6 +653,7 @@ DATA_SPEC = TableSpec(
   ]
 )
 
+EXP_TIMELINE_SPEC = TableSpec(['user_id', 'exp_timeline'])
 TIMELINE_SPEC = TableSpec(['user_id', 'timeline'])
 FOCUSED_OBJECT_SPEC = TableSpec(['user_id', 'object_timeline'])
 
@@ -676,12 +734,13 @@ def generate(data):
   title = 'Robot teleoperation interface data'
 
   experiment_data = [
-    (user_id, stats) for user_id, stats, cam_timeline, obj, survey in data]
+    (user_id, stats)
+    for user_id, stats, exp_timeline, cam_timeline, obj, survey in data]
   data_table = ObjectTable(DATA_SPEC, experiment_data)
   data_section = Section('Experiment data', data_table)
 
   survey_data = []
-  for user_id, object_stats, cam_timeline, obj, survey in data:
+  for user_id, object_stats, exp_timeline, cam_timeline, obj, survey in data:
     row_data = {'user_id': user_id}
     row_data.update(survey)
     survey_data.append(row_data)
@@ -695,10 +754,13 @@ def generate(data):
   cam_section = Section('Camera view', cam_table)
 
   timeline_data = []
-  for user_id, object_stats, cam_timeline, obj, survey in data:
-    row_data = {'user_id': user_id, 'timeline': cam_timeline}
+  for user_id, object_stats, exp_timeline, cam_timeline, obj, survey in data:
+    row_data = {'user_id': user_id, 'timeline': cam_timeline,
+        'exp_timeline': exp_timeline}
     row_data.update(obj)
     timeline_data.append(row_data)
+  exp_timeline_table = TimelineTable(EXP_TIMELINE_SPEC, timeline_data)
+  exp_timeline_section = Section('Experiment timeline', exp_timeline_table)
   timeline_table = TimelineTable(TIMELINE_SPEC, timeline_data)
   timeline_section = Section('Webcam timeline', timeline_table)
   focused_object_table = TimelineTable(FOCUSED_OBJECT_SPEC, timeline_data)
@@ -706,6 +768,6 @@ def generate(data):
     focused_object_table)
   page = Page(
     title, data_section, personal_section, trouble_section, pcl_section,
-    cam_section, timeline_section, focused_object_section
+    cam_section, exp_timeline_section, timeline_section, focused_object_section
   )
   return page.generate()

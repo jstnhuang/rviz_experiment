@@ -20,6 +20,7 @@ class TimeTaken(object):
     self._object_stats = ObjectStats()
     self._object_timeline = object_timeline
     self._compute_object_stats()
+    self._timeline = []
 
   def _compute_object_stats(self):
     for obj in objects.OBJECTS:
@@ -84,6 +85,7 @@ class CameraMovementTime(object):
     self._raw_first_time = None
     for obj in objects.OBJECTS:
       self._object_stats.add(obj, 'camera_movement_time', 0)
+    self._timeline = []
 
   def update(self, topic, message, time):
     time = time.to_sec()
@@ -99,11 +101,15 @@ class CameraMovementTime(object):
       duration = time - self._previous_time
       self._object_stats.add(obj, 'camera_movement_time', duration)
       self._object_stats.add('all', 'camera_movement_time', duration)
+      self._timeline.append((time - self._raw_first_time, duration, 'camera'))
     self._previous_message = message
     self._previous_time = time
 
   def object_stats(self):
     return self._object_stats
+
+  def timeline(self):
+    return self._timeline
 
 class MarkerMovementTime(object):
   def __init__(self, object_timeline):
@@ -114,6 +120,7 @@ class MarkerMovementTime(object):
     self._raw_first_time = None
     for obj in objects.OBJECTS:
       self._object_stats.add(obj, 'marker_movement_time', 0)
+    self._timeline = []
 
   def update(self, topic, message, time):
     time = time.to_sec()
@@ -122,7 +129,7 @@ class MarkerMovementTime(object):
 
     # The feedback topic is not updated continuously, so we look only at the
     # amount of time POSE_UPDATE events are published.
-    if topic != topics.MARKER_FEEDBACK:
+    if (topic != topics.MARKER_FEEDBACK):
       return
     if message.event_type == 1:
       if self._pose_update_start is None:
@@ -137,11 +144,15 @@ class MarkerMovementTime(object):
         duration = self._pose_update_end - self._pose_update_start
         self._object_stats.add(obj, 'marker_movement_time', duration)
         self._object_stats.add('all', 'marker_movement_time', duration)
+        self._timeline.append((time - self._raw_first_time, duration, 'marker'))
         self._pose_update_start = None
         self._pose_update_end = None
 
   def object_stats(self):
     return self._object_stats
+
+  def timeline(self):
+    return self._timeline
 
 class GraspCount(object):
   def __init__(self, object_timeline):

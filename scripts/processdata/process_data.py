@@ -109,8 +109,22 @@ def process_experiment((path, object_timeline)):
       stats['time_taken'] - stats['camera_movement_time'] -
       stats['marker_movement_time']
     )
+
+  timeline = build_timeline(
+    marker_movement_processor.timeline(),
+    camera_movement_processor.timeline())
   
-  return object_stats
+  return object_stats, timeline
+
+def build_timeline(marker_timeline, camera_timeline):
+  timeline = sorted(marker_timeline + camera_timeline)
+  last_end_time = 0
+  others = []
+  for time, duration, action in timeline:
+    if time > last_end_time:
+      others.append((last_end_time, time - last_end_time, 'other'))
+    last_end_time = time + duration
+  return sorted(timeline + others)
 
 def process_code((path, object_timeline)):
   """Extract features from a webcam coding."""
@@ -148,13 +162,13 @@ def process(data_dir, user_data, survey_data):
   webcam_features = pool.map(process_code, args)
 
   all_data = []
-  for user_id, exp, (cam, cam_timeline), obj, survey in zip(
+  for user_id, (exp, exp_timeline), (cam, cam_timeline), obj, survey in zip(
     user_ids, experiment_features, webcam_features, object_features,
     survey_data):
     object_stats = ObjectStats()
     object_stats.update(exp)
     object_stats.update(cam)
-    data = (user_id, object_stats, cam_timeline, obj, survey)
+    data = (user_id, object_stats, exp_timeline, cam_timeline, obj, survey)
     all_data.append(data)
 
   html = views.generate(all_data)

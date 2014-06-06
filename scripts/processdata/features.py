@@ -13,6 +13,7 @@ FEATURES = {
   'right_stddev': ('Standard deviation looking right', 'duration'),
   'num_left_looks': ('Number of left looks', 'count'),
   'num_right_looks': ('Number of right looks', 'count'),
+  'exp_timeline': ('User actions', 'exp_timeline'),
   'timeline': ('Webcam timeline', 'timeline'),
   'object_timeline': ('Focused object timeline', 'object_timeline'),
   'timestamp': ('Timestamp', 'timestamp'),
