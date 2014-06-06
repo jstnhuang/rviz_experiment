@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import features
 import message_factory
+from object_stats import ObjectStats
 import processors
 import survey
 import topics
@@ -61,67 +62,6 @@ def open_bag(filename):
   except Exception as e:
     print(e)
 
-def process_experiment(path):
-  """Extract features of the bag file."""
-  print('Processing', path)
-  bag = open_bag(path)
-  if bag is None:
-    return None
-  time_taken_processor = processors.TimeTaken()
-  camera_movement_time_processor = processors.CameraMovementTime()
-  marker_movement_time_processor = processors.MarkerMovementTime()
-  grasp_count_processor = processors.GraspCount()
-  message_logs = {}
-  for topic, message, time in bag.read_messages(topics=EXPERIMENT_TOPICS):
-    model = message_factory.model(message)
-    if model is None:
-      continue
-    time_taken_processor.update(topic, model, time)
-    camera_movement_time_processor.update(topic, model, time)
-    marker_movement_time_processor.update(topic, model, time)
-    grasp_count_processor.update(topic, model, time)
-    if topic in message_logs:
-      message_logs[topic].append((model, time))
-    else:
-      message_logs[topic] = [(model, time)]
-  bag.close()
-  time_taken = time_taken_processor.time_taken()
-  camera_movement_time = camera_movement_time_processor.movement_time()
-  marker_time = marker_movement_time_processor.movement_time()
-  num_grasps = grasp_count_processor.num_grasps()
-  return {
-    'time_taken': time_taken,
-    'camera_movement_time': camera_movement_time,
-    'marker_movement_time': marker_time,
-    'other_time': time_taken - camera_movement_time - marker_time,
-    'grasp_count': num_grasps
-  }
-
-def process_code(path):
-  """Extract features from a webcam coding."""
-  print('Processing', path)
-  bag = open_bag(path)
-  if bag is None:
-    return None
-  code_processor = processors.Code()
-  for topic, message, time in bag.read_messages():
-    model = message_factory.model(message)
-    if model is None:
-      continue
-    code_processor.update(topic, model, time)
-  bag.close()
-  return {
-    'left_time': code_processor.left_time(),
-    'right_time': code_processor.right_time(),
-    'mean_left': code_processor.mean_left(),
-    'mean_right': code_processor.mean_right(),
-    'left_stddev': code_processor.left_stddev(),
-    'right_stddev': code_processor.right_stddev(),
-    'num_left_looks': code_processor.num_left_looks(),
-    'num_right_looks': code_processor.num_right_looks(),
-    'timeline': code_processor.timeline()
-  }
-
 def process_objects(path):
   print('Processing', path)
   with open(path) as timeline:
@@ -139,31 +79,100 @@ def process_objects(path):
     'object_timeline': object_processor.timeline()
   }
 
+def process_experiment((path, object_timeline)):
+  """Extract features of the bag file."""
+  print('Processing', path)
+  bag = open_bag(path)
+  if bag is None:
+    return None
+  object_stats = ObjectStats()
+  time_taken_processor = processors.TimeTaken(object_timeline)
+  camera_movement_processor = processors.CameraMovementTime(object_timeline)
+  marker_movement_processor = processors.MarkerMovementTime(object_timeline)
+  grasp_count_processor = processors.GraspCount(object_timeline)
+  for topic, message, time in bag.read_messages(topics=EXPERIMENT_TOPICS):
+    model = message_factory.model(message)
+    if model is None:
+      continue
+    time_taken_processor.update(topic, model, time)
+    camera_movement_processor.update(topic, model, time)
+    marker_movement_processor.update(topic, model, time)
+    grasp_count_processor.update(topic, model, time)
+  bag.close()
+  time_taken_processor.update_last()
+  object_stats.update(time_taken_processor.object_stats())
+  object_stats.update(camera_movement_processor.object_stats())
+  object_stats.update(marker_movement_processor.object_stats())
+  object_stats.update(grasp_count_processor.object_stats())
+  for obj, stats in object_stats.items():
+    if not 'time_taken' in stats:
+      print(obj, stats)
+    stats['other_time'] = (
+      stats['time_taken'] - stats['camera_movement_time'] -
+      stats['marker_movement_time']
+    )
+  
+  return object_stats
+
+def process_code((path, object_timeline)):
+  """Extract features from a webcam coding."""
+  print('Processing', path)
+  bag = open_bag(path)
+  if bag is None:
+    return None
+  code_processor = processors.Code(object_timeline)
+  for topic, message, time in bag.read_messages():
+    model = message_factory.model(message)
+    if model is None:
+      continue
+    code_processor.update(topic, model, time)
+  bag.close()
+  return code_processor.object_stats(), code_processor.timeline()
+  #return {
+  #  'left_time': code_processor.left_time(),
+  #  'right_time': code_processor.right_time(),
+  #  'mean_left': code_processor.mean_left(),
+  #  'mean_right': code_processor.mean_right(),
+  #  'left_stddev': code_processor.left_stddev(),
+  #  'right_stddev': code_processor.right_stddev(),
+  #  'num_left_looks': code_processor.num_left_looks(),
+  #  'num_right_looks': code_processor.num_right_looks(),
+  #  'timeline': code_processor.timeline()
+  #}
+
 def process(data_dir, user_data, survey_data):
   pool = multiprocessing.Pool(processes=12)
   user_ids = [user.user_id for user in user_data]
-  experiment_paths = [
-    '/'.join([data_dir, user.experiment_file]) for user in user_data
-  ]
-  experiment_features = pool.map(process_experiment, experiment_paths)
-  webcam_paths = [
-    '/'.join([data_dir, user.webcam_file]) for user in user_data
-  ]
-  webcam_features = pool.map(process_code, webcam_paths)
+
   object_paths = [
     '/'.join([data_dir, user.object_file]) for user in user_data
   ]
   object_features = pool.map(process_objects, object_paths)
+  object_timelines = [x['object_timeline'] for x in object_features]
+  experiment_paths = [
+    '/'.join([data_dir, user.experiment_file]) for user in user_data
+  ]
+  args = zip(experiment_paths, object_timelines)
+  experiment_features = pool.map(process_experiment, args)
+  webcam_paths = [
+    '/'.join([data_dir, user.webcam_file]) for user in user_data
+  ]
+  args = zip(webcam_paths, object_timelines)
+  webcam_features = pool.map(process_code, args)
 
   all_data = []
-  for user_id, exp, cam, obj, survey in zip(
+  for user_id, exp, (cam, cam_timeline), obj, survey in zip(
     user_ids, experiment_features, webcam_features, object_features,
     survey_data):
-    data = {'user_id': user_id}
-    data.update(exp)
-    data.update(cam)
-    data.update(obj)
-    data.update(survey)
+    object_stats = ObjectStats()
+    object_stats.update(exp)
+    object_stats.update(cam)
+    data = (user_id, object_stats, cam_timeline, obj, survey)
+    #data = {'user_id': user_id}
+    #data.update(exp)
+    #data.update(cam)
+    #data.update(obj)
+    #data.update(survey)
     all_data.append(data)
 
   html = views.generate(all_data)

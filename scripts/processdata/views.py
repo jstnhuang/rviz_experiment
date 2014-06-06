@@ -1,7 +1,7 @@
 from __future__ import division
 
 import features
-import genpy
+import objects
 import utils
 
 class Page(object):
@@ -78,6 +78,34 @@ class Section(object):
       table=self._table.generate()
     )
 
+class ObjectTable(object):
+  TABLE_HTML = '''
+    <div id="{obj}">
+      <h3>Data for {obj}</h3>
+      {table}
+    </div>
+  '''
+  def __init__(self, table_spec, experiment_data):
+    self._tables = {} # one table for each object.
+    for obj in objects.OBJECTS:
+      table_data = []
+      for user_id, object_stats in experiment_data:
+        stats = object_stats.get_stats(obj)
+        data_row = {'user_id': user_id}
+        data_row.update(stats)
+        table_data.append(data_row)
+      self._tables[obj] = Table(table_spec, table_data)
+
+  def generate(self):
+    tables = []
+    for obj in objects.OBJECTS:
+      table_html = ObjectTable.TABLE_HTML.format(
+        obj=obj,
+        table=self._tables[obj].generate()
+      )
+      tables.append(table_html)
+    return ''.join(tables)
+
 class Table(object):
   TABLE_HTML = '''
     <table class="table">
@@ -86,10 +114,6 @@ class Table(object):
       {summary}
     </table>
   '''
-  ROW_HTML = '<tr>{cells}</tr>'
-  HEADER_HTML = '<th>{title}</th>'
-  CELL_HTML = '<td>{value}</td>'
-
   def __init__(self, table_spec, data):
     self._table_spec = table_spec
     self._data = data
@@ -104,6 +128,18 @@ class Table(object):
     header = self._table_spec.generate_header()
     rows = self._generate_rows()
     summary = self._table_spec.generate_summary(self._data)
+    return Table.TABLE_HTML.format(header=header, rows=rows, summary=summary)
+
+class TimelineTable(Table):
+  TABLE_HTML = '''
+    <table class="table">
+      {header}
+      {rows}
+    </table>
+  '''
+  def generate(self):
+    header = self._table_spec.generate_header()
+    rows = self._generate_rows()
     return Table.TABLE_HTML.format(header=header, rows=rows, summary=summary)
 
 class TableSpec(object):
@@ -201,7 +237,7 @@ class DurationColumn(DataColumn):
 
   def generate_summary(self, all_data):
     durations = [x[self._key] for x in all_data]
-    average = genpy.Duration(0)
+    average = 0
     for duration in durations:
       average += duration
     average /= len(durations)
@@ -210,7 +246,7 @@ class DurationColumn(DataColumn):
 class CountColumn(DataColumn):
   def generate_summary(self, all_data):
     counts = [x[self._key] for x in all_data]
-    average = sum(counts) / len(counts)
+    average = sum(counts) / len(counts) if len(counts) != 0 else 0
     return DataColumn.CELL_HTML.format(self._round(average))
 
 class TimelineColumn(DataColumn):
@@ -239,7 +275,7 @@ class TimelineColumn(DataColumn):
         break
     timeline = timeline[first_look:]
     timeline_events = []
-    total_time = sum([delta.to_sec() for delta, state in timeline])
+    total_time = sum([delta for delta, state in timeline])
     for delta, state in timeline:
       color = None
       if state == 'left':
@@ -248,7 +284,7 @@ class TimelineColumn(DataColumn):
         color = 'info'
       else:
         color = 'warning'
-      percentage = 100 * delta.to_sec() / total_time
+      percentage = 100 * delta / total_time if total_time != 0 else 0
       timeline_event = TimelineColumn.EVENT_HTML.format(color, percentage)
       timeline_events.append(timeline_event)
     timeline_html = TimelineColumn.TIMELINE_HTML.format(
@@ -291,10 +327,13 @@ class ObjectTimelineColumn(DataColumn):
   def generate_cell(self, data):
     timeline = data[self._key]
     timeline_events = []
-    _, total_time, _ = timeline[-1]
-    for start_time, end_time, obj in timeline:
+    _, total_time, _ = timeline._timeline[-1]
+    for start_time, end_time, obj in timeline._timeline:
       color = ObjectTimelineColumn.LEGEND[obj]
-      percentage = 100 * (end_time - start_time) / total_time
+      percentage = (
+        100 * (end_time - start_time) / total_time
+        if total_time != 0 else 0
+      )
       timeline_event = ObjectTimelineColumn.EVENT_HTML.format(color, percentage)
       timeline_events.append(timeline_event)
     timeline_html = TimelineColumn.TIMELINE_HTML.format(
@@ -350,7 +389,7 @@ class SurveyColumn(DataColumn):
     for i, key in enumerate(self._keys):
       class_index = i % len(SurveyColumn.CLASSES)
       counts = [x[key] for x in all_data]
-      average = sum(counts) / len(counts)
+      average = sum(counts) / len(counts) if len(counts) != 0 else 0
       cell = SurveyColumn.LIKERT_HTML.format(
         cls=SurveyColumn.CLASSES[class_index],
         percentage=100 * average / 4,
@@ -400,7 +439,7 @@ class ObjectCountColumn(DataColumn):
     for i, key in enumerate(self._keys):
       counts = [x[key] for x in all_data]
       class_index = i % len(ObjectCountColumn.CLASSES)
-      average = sum(counts) / len(counts)
+      average = sum(counts) / len(counts) if len(counts) != 0 else 0
       cell = ObjectCountColumn.COUNT_HTML.format(
         cls=ObjectCountColumn.CLASSES[class_index],
         percentage=100 * average / 6,
@@ -413,7 +452,7 @@ class YesNoColumn(DataColumn):
   def generate_summary(self, all_data):
     values = [x[self._key] for x in all_data]
     values = [1 if value == 'Yes' else 0 for value in values]
-    average = self._round(sum(values) / len(values))
+    average = self._round(sum(values) / len(values) if len(values) != 0 else 0)
     return DataColumn.CELL_HTML.format(average)
 
 class DistributionColumn(DataColumn):
@@ -445,7 +484,7 @@ class DistributionColumn(DataColumn):
   def generate_cell(self, data):
     data = [data[key] for key in self._keys]
 
-    total = genpy.Duration(0)
+    total = 0
     for duration in data:
       total += duration
 
@@ -453,7 +492,7 @@ class DistributionColumn(DataColumn):
     for i, duration in enumerate(data):
       class_index = i % len(DistributionColumn.CLASSES)
       part_class = DistributionColumn.CLASSES[class_index]
-      percentage = 100 * duration.to_sec() / total.to_sec()
+      percentage = 100 * duration / total if total != 0 else 0
       content = utils.format_duration(duration)
       parts.append(
         DistributionColumn.PART_HTML.format( cls=part_class,
@@ -470,13 +509,13 @@ class DistributionColumn(DataColumn):
 
   def generate_summary(self, all_data):
     data = [[x[key] for x in all_data] for key in self._keys]
-    averages = [genpy.Duration(0) for key in self._keys]
+    averages = [0 for key in self._keys]
     for i, col in enumerate(data):
       for x in col:
         averages[i] += x
       averages[i] /= len(col)
 
-    total_average = genpy.Duration(0)
+    total_average = 0
     for average in averages:
       total_average += average
 
@@ -484,7 +523,7 @@ class DistributionColumn(DataColumn):
     for i, duration in enumerate(averages):
       class_index = i % len(DistributionColumn.CLASSES)
       part_class = DistributionColumn.CLASSES[class_index]
-      percentage = 100 * duration.to_sec() / total_average.to_sec()
+      percentage = 100 * duration / total_average if total_average != 0 else 0
       content = utils.format_duration(duration)
       parts.append(
         DistributionColumn.PART_HTML.format(
@@ -594,21 +633,36 @@ CAM_SPEC = TableSpec(
 
 def generate(data):
   title = 'Robot teleoperation interface data'
-  data_table = Table(DATA_SPEC, data)
+
+  experiment_data = [
+    (user_id, stats) for user_id, stats, cam_timeline, obj, survey in data]
+  data_table = ObjectTable(DATA_SPEC, experiment_data)
   data_section = Section('Experiment data', data_table)
-  timeline_table = Table(TIMELINE_SPEC, data)
+
+  survey_data = []
+  for user_id, object_stats, cam_timeline, obj, survey in data:
+    row_data = {'user_id': user_id}
+    row_data.update(survey)
+    survey_data.append(row_data)
+  personal_table = Table(PERSONAL_SPEC, survey_data)
+  personal_section = Section('User info', personal_table)
+  trouble_table = Table(TROUBLE_SPEC, survey_data)
+  trouble_section = Section('Troubles and strategy', trouble_table)
+  pcl_table = Table(PCL_SPEC, survey_data)
+  pcl_section = Section('Point cloud view', pcl_table)
+  cam_table = Table(CAM_SPEC, survey_data)
+  cam_section = Section('Camera view', cam_table)
+
+  timeline_data = []
+  for user_id, object_stats, cam_timeline, obj, survey in data:
+    row_data = {'user_id': user_id, 'timeline': cam_timeline}
+    row_data.update(obj)
+    timeline_data.append(row_data)
+  timeline_table = Table(TIMELINE_SPEC, timeline_data)
   timeline_section = Section('Webcam timeline', timeline_table)
-  focused_object_table = Table(FOCUSED_OBJECT_SPEC, data)
+  focused_object_table = Table(FOCUSED_OBJECT_SPEC, timeline_data)
   focused_object_section = Section('Focused objects timeline',
     focused_object_table)
-  personal_table = Table(PERSONAL_SPEC, data)
-  personal_section = Section('User info', personal_table)
-  trouble_table = Table(TROUBLE_SPEC, data)
-  trouble_section = Section('Troubles and strategy', trouble_table)
-  pcl_table = Table(PCL_SPEC, data)
-  pcl_section = Section('Point cloud view', pcl_table)
-  cam_table = Table(CAM_SPEC, data)
-  cam_section = Section('Camera view', cam_table)
   page = Page(
     title, data_section, personal_section, trouble_section, pcl_section,
     cam_section, timeline_section, focused_object_section
