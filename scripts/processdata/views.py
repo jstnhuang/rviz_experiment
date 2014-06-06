@@ -181,7 +181,7 @@ class TimelineTable(Table):
   def generate(self):
     header = self._table_spec.generate_header()
     rows = self._generate_rows()
-    return Table.TABLE_HTML.format(header=header, rows=rows, summary=summary)
+    return TimelineTable.TABLE_HTML.format(header=header, rows=rows)
 
 class TableSpec(object):
   ROW_HTML = '<tr>{cells}</tr>'
@@ -699,9 +699,9 @@ def generate(data):
     row_data = {'user_id': user_id, 'timeline': cam_timeline}
     row_data.update(obj)
     timeline_data.append(row_data)
-  timeline_table = Table(TIMELINE_SPEC, timeline_data)
+  timeline_table = TimelineTable(TIMELINE_SPEC, timeline_data)
   timeline_section = Section('Webcam timeline', timeline_table)
-  focused_object_table = Table(FOCUSED_OBJECT_SPEC, timeline_data)
+  focused_object_table = TimelineTable(FOCUSED_OBJECT_SPEC, timeline_data)
   focused_object_section = Section('Focused objects timeline',
     focused_object_table)
   page = Page(
