@@ -6,6 +6,7 @@ class ObjectStats(object):
     self._stats = {}
     for obj in objects.OBJECTS:
       self._stats[obj] = {}
+    self._stats['all'] = {}
 
   def update(self, object_stats):
     """Merge with another ObjectStats instance."""

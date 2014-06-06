@@ -105,8 +105,6 @@ def process_experiment((path, object_timeline)):
   object_stats.update(marker_movement_processor.object_stats())
   object_stats.update(grasp_count_processor.object_stats())
   for obj, stats in object_stats.items():
-    if not 'time_taken' in stats:
-      print(obj, stats)
     stats['other_time'] = (
       stats['time_taken'] - stats['camera_movement_time'] -
       stats['marker_movement_time']
@@ -128,17 +126,6 @@ def process_code((path, object_timeline)):
     code_processor.update(topic, model, time)
   bag.close()
   return code_processor.object_stats(), code_processor.timeline()
-  #return {
-  #  'left_time': code_processor.left_time(),
-  #  'right_time': code_processor.right_time(),
-  #  'mean_left': code_processor.mean_left(),
-  #  'mean_right': code_processor.mean_right(),
-  #  'left_stddev': code_processor.left_stddev(),
-  #  'right_stddev': code_processor.right_stddev(),
-  #  'num_left_looks': code_processor.num_left_looks(),
-  #  'num_right_looks': code_processor.num_right_looks(),
-  #  'timeline': code_processor.timeline()
-  #}
 
 def process(data_dir, user_data, survey_data):
   pool = multiprocessing.Pool(processes=12)
@@ -168,11 +155,6 @@ def process(data_dir, user_data, survey_data):
     object_stats.update(exp)
     object_stats.update(cam)
     data = (user_id, object_stats, cam_timeline, obj, survey)
-    #data = {'user_id': user_id}
-    #data.update(exp)
-    #data.update(cam)
-    #data.update(obj)
-    #data.update(survey)
     all_data.append(data)
 
   html = views.generate(all_data)

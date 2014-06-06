@@ -17,6 +17,23 @@ class Page(object):
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
         <script
         src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script>
+          function showObject(obj) {{
+            $('.objecttable').addClass('hidden');
+            var table = $('#obj-' + obj);
+            table.removeClass('hidden');
+            table.addClass('show');
+          }}
+          function handleObjectSelection() {{
+            var obj = $("input[name=objectpicker]:checked").val();
+            showObject(obj);
+          }}
+          function initObjectSection() {{
+            $('#objectpickerform').change(handleObjectSelection);
+            handleObjectSelection();
+          }}
+          $(document).ready(initObjectSection);
+        </script>
         <style>
           .progress-bar {{
             color: black;
@@ -79,15 +96,26 @@ class Section(object):
     )
 
 class ObjectTable(object):
+  SECTION_HTML = '''
+    <form role="form" id="objectpickerform">
+      {form}
+    </form>
+    {tables}
+  '''
   TABLE_HTML = '''
-    <div id="{obj}">
+    <div class="objecttable hidden" id="obj-{obj}">
       <h3>Data for {obj}</h3>
       {table}
     </div>
   '''
+  INPUT_HTML = '''
+    <label class="radio-inline">
+      <input type="radio" name="objectpicker" value="{obj}" {checked}>{obj}
+    </label>
+  '''
   def __init__(self, table_spec, experiment_data):
     self._tables = {} # one table for each object.
-    for obj in objects.OBJECTS:
+    for obj in ['all'] + objects.OBJECTS:
       table_data = []
       for user_id, object_stats in experiment_data:
         stats = object_stats.get_stats(obj)
@@ -96,15 +124,28 @@ class ObjectTable(object):
         table_data.append(data_row)
       self._tables[obj] = Table(table_spec, table_data)
 
+  def _generate_form(self):
+    inputs = []
+    for obj in ['all'] + objects.OBJECTS:
+      checked = ''
+      if obj == 'all':
+        checked = 'checked'
+      input_html = ObjectTable.INPUT_HTML.format(obj=obj, checked=checked)
+      inputs.append(input_html)
+    return ''.join(inputs)
+
   def generate(self):
     tables = []
-    for obj in objects.OBJECTS:
+    form_html = self._generate_form()
+    for obj in ['all'] + objects.OBJECTS:
       table_html = ObjectTable.TABLE_HTML.format(
         obj=obj,
+        form=form_html,
         table=self._tables[obj].generate()
       )
       tables.append(table_html)
-    return ''.join(tables)
+    tables_html = ''.join(tables)
+    return ObjectTable.SECTION_HTML.format(form=form_html, tables=tables_html)
 
 class Table(object):
   TABLE_HTML = '''

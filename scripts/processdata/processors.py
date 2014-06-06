@@ -69,6 +69,9 @@ class TimeTaken(object):
     trailing_time = self._last_time - self._raw_last_time
     self._object_stats.add(last_obj, 'time_taken', -trailing_time)
 
+    self._object_stats.add('all', 'time_taken', self._last_time -
+      self._first_time)
+
   def object_stats(self):
     return self._object_stats
 
@@ -95,6 +98,7 @@ class CameraMovementTime(object):
     if self._previous_message is not None and message != self._previous_message:
       duration = time - self._previous_time
       self._object_stats.add(obj, 'camera_movement_time', duration)
+      self._object_stats.add('all', 'camera_movement_time', duration)
     self._previous_message = message
     self._previous_time = time
 
@@ -132,6 +136,7 @@ class MarkerMovementTime(object):
         obj = self._object_timeline.object_at(time - self._raw_first_time)
         duration = self._pose_update_end - self._pose_update_start
         self._object_stats.add(obj, 'marker_movement_time', duration)
+        self._object_stats.add('all', 'marker_movement_time', duration)
         self._pose_update_start = None
         self._pose_update_end = None
 
@@ -162,6 +167,7 @@ class GraspCount(object):
       if message.position == 0:
         if not self._is_left_closed:
           self._object_stats.add(obj, 'grasp_count', 1)
+          self._object_stats.add('all', 'grasp_count', 1)
         self._is_left_closed = True
       else:
         self._is_left_closed = False
@@ -169,6 +175,7 @@ class GraspCount(object):
       if message.position == 0:
         if not self._is_right_closed:
           self._object_stats.add(obj, 'grasp_count', 1)
+          self._object_stats.add('all', 'grasp_count', 1)
         self._is_right_closed = True
       else:
         self._is_right_closed = False
@@ -211,12 +218,19 @@ class Code(object):
         self._left_time.add(obj, 'left_time', delta)
         self._squared_left.add(obj, 'squared_left', delta*delta)
         self._num_left_looks.add(obj, 'num_left_looks', 1)
+        self._left_time.add('all', 'left_time', delta)
+        self._squared_left.add('all', 'squared_left', delta*delta)
+        self._num_left_looks.add('all', 'num_left_looks', 1)
       elif self._state == 'right':
         self._right_time.add(obj, 'right_time', delta)
         self._squared_right.add(obj, 'squared_right', delta*delta)
         self._num_right_looks.add(obj, 'num_right_looks', 1)
+        self._right_time.add('all', 'right_time', delta)
+        self._squared_right.add('all', 'squared_right', delta*delta)
+        self._num_right_looks.add('all', 'num_right_looks', 1)
       else:
         self._other_time.add(obj, 'other_time', delta)
+        self._other_time.add('all', 'other_time', delta)
     self._state = message.data
     self._prev_time = time
 
